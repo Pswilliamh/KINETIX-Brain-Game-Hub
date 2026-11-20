@@ -1,0 +1,233 @@
+{
+  "entities": {
+    "PlayerProfile": {
+      "title": "PlayerProfile",
+      "description": "Cloud-saved player state including credits, unlocked skins, unlocked digital vault items, daily streak, and high scores.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Firebase Auth UID",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Player display name",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "credits": {
+          "type": "number",
+          "description": "Available player credits (starts at 100000)"
+        },
+        "highScore": {
+          "type": "number",
+          "description": "All-time best arcade score"
+        },
+        "dailyHighScore": {
+          "type": "number",
+          "description": "Best daily challenge score"
+        },
+        "maxLevel": {
+          "type": "number",
+          "description": "Highest difficulty level reached"
+        },
+        "patternsCompleted": {
+          "type": "number",
+          "description": "Total target patterns completed"
+        },
+        "activeSkinId": {
+          "type": "string",
+          "description": "Currently equipped minimalist skin ID",
+          "minLength": 1,
+          "maxLength": 32
+        },
+        "unlockedSkins": {
+          "type": "array",
+          "description": "List of unlocked skin IDs (max 15)"
+        },
+        "unlockedVaultItems": {
+          "type": "array",
+          "description": "List of unlocked digital reward IDs (max 25)"
+        },
+        "dailyStreak": {
+          "type": "number",
+          "description": "Consecutive days claimed"
+        },
+        "lastDailyClaimDate": {
+          "type": "string",
+          "description": "YYYY-MM-DD date of last daily claim",
+          "minLength": 0,
+          "maxLength": 16
+        },
+        "drawTickets": {
+          "type": "number",
+          "description": "Number of entries into the monthly $50 giveaway drawing"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of creation"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of last update"
+        }
+      },
+      "required": [
+        "uid",
+        "displayName",
+        "credits",
+        "highScore",
+        "dailyHighScore",
+        "maxLevel",
+        "patternsCompleted",
+        "activeSkinId",
+        "unlockedSkins",
+        "unlockedVaultItems",
+        "dailyStreak",
+        "lastDailyClaimDate",
+        "drawTickets",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "LeaderboardEntry": {
+      "title": "LeaderboardEntry",
+      "description": "Public global high-score leaderboard entry for arcade or daily challenge mode.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Player UID",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Player display name",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "score": {
+          "type": "number",
+          "description": "Achieved score"
+        },
+        "level": {
+          "type": "number",
+          "description": "Difficulty level reached"
+        },
+        "patterns": {
+          "type": "number",
+          "description": "Patterns completed in run"
+        },
+        "mode": {
+          "type": "string",
+          "description": "Game mode: arcade or daily",
+          "enum": ["arcade", "daily"],
+          "minLength": 1,
+          "maxLength": 16
+        },
+        "skinId": {
+          "type": "string",
+          "description": "Skin equipped during run",
+          "minLength": 1,
+          "maxLength": 32
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp"
+        }
+      },
+      "required": [
+        "uid",
+        "displayName",
+        "score",
+        "level",
+        "patterns",
+        "mode",
+        "skinId",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "MonthlyDrawEntry": {
+      "title": "MonthlyDrawEntry",
+      "description": "Public entry into the monthly $50 giveaway drawing.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Player UID",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Player display name",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "monthKey": {
+          "type": "string",
+          "description": "Month identifier YYYY-MM",
+          "minLength": 7,
+          "maxLength": 7,
+          "pattern": "^[0-9]{4}-[0-9]{2}$"
+        },
+        "ticketCount": {
+          "type": "number",
+          "description": "Total tickets entered for this month"
+        },
+        "highScore": {
+          "type": "number",
+          "description": "Player qualifying high score"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp"
+        }
+      },
+      "required": [
+        "uid",
+        "displayName",
+        "monthKey",
+        "ticketCount",
+        "highScore",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/players/{userId}": {
+      "schema": { "$ref": "#/entities/PlayerProfile" },
+      "description": "Owner-isolated player profile for cross-platform cloud saves (credits, skins, vault items, streaks)."
+    },
+    "/leaderboard/{entryId}": {
+      "schema": { "$ref": "#/entities/LeaderboardEntry" },
+      "description": "Public global high-score leaderboard records."
+    },
+    "/monthly_draws/{entryId}": {
+      "schema": { "$ref": "#/entities/MonthlyDrawEntry" },
+      "description": "Public monthly $50 drawing entries."
+    }
+  }
+}

@@ -1,0 +1,253 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Safety Net (Default Deny)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Hardened Global Primitives
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null && request.auth.token.email_verified == true;
+    }
+
+    // Validation Blueprint: PlayerProfile
+    function isValidPlayerProfile(data) {
+      return data.keys().hasAll([
+        'uid',
+        'displayName',
+        'credits',
+        'highScore',
+        'dailyHighScore',
+        'maxLevel',
+        'patternsCompleted',
+        'activeSkinId',
+        'unlockedSkins',
+        'unlockedVaultItems',
+        'dailyStreak',
+        'lastDailyClaimDate',
+        'drawTickets',
+        'createdAt',
+        'updatedAt'
+      ]) &&
+      data.keys().hasOnly([
+        'uid',
+        'displayName',
+        'credits',
+        'highScore',
+        'dailyHighScore',
+        'maxLevel',
+        'patternsCompleted',
+        'activeSkinId',
+        'unlockedSkins',
+        'unlockedVaultItems',
+        'dailyStreak',
+        'lastDailyClaimDate',
+        'drawTickets',
+        'createdAt',
+        'updatedAt'
+      ]) &&
+      data.uid == request.auth.uid &&
+      isValidId(data.uid) &&
+      data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 64 &&
+      data.credits is number && data.credits >= 0 && data.credits <= 1000000000 &&
+      data.highScore is number && data.highScore >= 0 && data.highScore <= 100000000 &&
+      data.dailyHighScore is number && data.dailyHighScore >= 0 && data.dailyHighScore <= 100000000 &&
+      data.maxLevel is number && data.maxLevel >= 1 && data.maxLevel <= 999 &&
+      data.patternsCompleted is number && data.patternsCompleted >= 0 && data.patternsCompleted <= 1000000 &&
+      data.activeSkinId is string && data.activeSkinId.size() >= 1 && data.activeSkinId.size() <= 32 &&
+      data.unlockedSkins is list && data.unlockedSkins.size() >= 1 && data.unlockedSkins.size() <= 15 &&
+      data.unlockedSkins[0] is string && data.unlockedSkins[0].size() <= 32 &&
+      data.unlockedVaultItems is list && data.unlockedVaultItems.size() <= 25 &&
+      (data.unlockedVaultItems.size() == 0 || (data.unlockedVaultItems[0] is string && data.unlockedVaultItems[0].size() <= 64)) &&
+      data.dailyStreak is number && data.dailyStreak >= 0 && data.dailyStreak <= 3650 &&
+      data.lastDailyClaimDate is string && data.lastDailyClaimDate.size() <= 16 &&
+      data.drawTickets is number && data.drawTickets >= 0 && data.drawTickets <= 10000 &&
+      data.createdAt is timestamp &&
+      data.updatedAt is timestamp;
+    }
+
+    // Validation Blueprint: LeaderboardEntry
+    function isValidLeaderboardEntry(data) {
+      return data.keys().hasAll([
+        'uid',
+        'displayName',
+        'score',
+        'level',
+        'patterns',
+        'mode',
+        'skinId',
+        'createdAt',
+        'updatedAt'
+      ]) &&
+      data.keys().hasOnly([
+        'uid',
+        'displayName',
+        'score',
+        'level',
+        'patterns',
+        'mode',
+        'skinId',
+        'createdAt',
+        'updatedAt'
+      ]) &&
+      data.uid == request.auth.uid &&
+      isValidId(data.uid) &&
+      data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 64 &&
+      data.score is number && data.score >= 0 && data.score <= 100000000 &&
+      data.level is number && data.level >= 1 && data.level <= 999 &&
+      data.patterns is number && data.patterns >= 0 && data.patterns <= 100000 &&
+      data.mode is string && data.mode.size() <= 16 && (data.mode == 'arcade' || data.mode == 'daily') &&
+      data.skinId is string && data.skinId.size() >= 1 && data.skinId.size() <= 32 &&
+      data.createdAt is timestamp &&
+      data.updatedAt is timestamp;
+    }
+
+    // Validation Blueprint: MonthlyDrawEntry
+    function isValidMonthlyDrawEntry(data) {
+      return data.keys().hasAll([
+        'uid',
+        'displayName',
+        'monthKey',
+        'ticketCount',
+        'highScore',
+        'createdAt',
+        'updatedAt'
+      ]) &&
+      data.keys().hasOnly([
+        'uid',
+        'displayName',
+        'monthKey',
+        'ticketCount',
+        'highScore',
+        'createdAt',
+        'updatedAt'
+      ]) &&
+      data.uid == request.auth.uid &&
+      isValidId(data.uid) &&
+      data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 64 &&
+      data.monthKey is string && data.monthKey.size() == 7 && data.monthKey.matches('^[0-9]{4}-[0-9]{2}$') &&
+      data.ticketCount is number && data.ticketCount >= 1 && data.ticketCount <= 10000 &&
+      data.highScore is number && data.highScore >= 0 && data.highScore <= 100000000 &&
+      data.createdAt is timestamp &&
+      data.updatedAt is timestamp;
+    }
+
+    // 1. Player Profiles (Owner-Isolated Cloud Save)
+    match /players/{userId} {
+      allow get: if isSignedIn() && isValidId(userId) && request.auth.uid == userId;
+      allow list: if false;
+      allow create: if isSignedIn() &&
+        isValidId(userId) &&
+        request.auth.uid == userId &&
+        isValidPlayerProfile(incoming()) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isSignedIn() &&
+        isValidPlayerProfile(incoming()) &&
+        isValidId(userId) &&
+        request.auth.uid == userId &&
+        existing().uid == request.auth.uid &&
+        incoming().uid == existing().uid &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        (
+          // Action: Sync Progress & Economy
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'displayName',
+            'credits',
+            'highScore',
+            'dailyHighScore',
+            'maxLevel',
+            'patternsCompleted',
+            'activeSkinId',
+            'unlockedSkins',
+            'unlockedVaultItems',
+            'dailyStreak',
+            'lastDailyClaimDate',
+            'drawTickets',
+            'updatedAt'
+          ])
+        );
+      allow delete: if false;
+    }
+
+    // 2. Global High-Score Leaderboard
+    match /leaderboard/{entryId} {
+      allow get: if isValidId(entryId) && existing().score >= 0;
+      allow list: if existing().score >= 0 && (existing().mode == 'arcade' || existing().mode == 'daily');
+      allow create: if isSignedIn() &&
+        isValidId(entryId) &&
+        isValidLeaderboardEntry(incoming()) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        exists(/databases/$(database)/documents/players/$(request.auth.uid));
+      allow update: if isSignedIn() &&
+        isValidLeaderboardEntry(incoming()) &&
+        isValidId(entryId) &&
+        existing().uid == request.auth.uid &&
+        incoming().uid == existing().uid &&
+        incoming().mode == existing().mode &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        incoming().score >= existing().score &&
+        (
+          // Action: Update Personal High Score Record
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'displayName',
+            'score',
+            'level',
+            'patterns',
+            'skinId',
+            'updatedAt'
+          ])
+        );
+      allow delete: if false;
+    }
+
+    // 3. Monthly $50 Giveaway Drawing Registry
+    match /monthly_draws/{entryId} {
+      allow get: if isValidId(entryId) && existing().ticketCount >= 1;
+      allow list: if existing().ticketCount >= 1 && existing().highScore >= 0;
+      allow create: if isSignedIn() &&
+        isValidId(entryId) &&
+        isValidMonthlyDrawEntry(incoming()) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        exists(/databases/$(database)/documents/players/$(request.auth.uid));
+      allow update: if isSignedIn() &&
+        isValidMonthlyDrawEntry(incoming()) &&
+        isValidId(entryId) &&
+        existing().uid == request.auth.uid &&
+        incoming().uid == existing().uid &&
+        incoming().monthKey == existing().monthKey &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        incoming().ticketCount >= existing().ticketCount &&
+        (
+          // Action: Add Tickets to Monthly Draw Entry
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'displayName',
+            'ticketCount',
+            'highScore',
+            'updatedAt'
+          ])
+        );
+      allow delete: if false;
+    }
+  }
+}

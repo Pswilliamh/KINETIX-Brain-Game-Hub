@@ -1,0 +1,6 @@
+{
+  "name": "KINETIX: Pattern Pulse Arcade",
+  "description": "Fast-paced minimalist pattern-block puzzle arcade with dynamic rhythm synthesis, haptic tactile feedback, global leaderboards, unlockable skins, daily challenges, digital rewards vault, and monthly $50 drawing.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
