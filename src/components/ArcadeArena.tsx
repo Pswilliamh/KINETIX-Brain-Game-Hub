@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import confetti from 'canvas-confetti';
 import {
+  AppLanguage,
   BLOCK_SKINS,
   BlockShape,
   GameMode,
@@ -53,6 +54,10 @@ import {
   ArrowRight,
   CheckCircle2,
   Play,
+  Brain,
+  BookOpen,
+  X,
+  Shuffle,
 } from 'lucide-react';
 
 export type ArenaSubScreen = 'play' | 'visual_example' | 'ai_helper';
@@ -60,6 +65,8 @@ export type ArenaSubScreen = 'play' | 'visual_example' | 'ai_helper';
 interface ArcadeArenaProps {
   mode: GameMode;
   onModeChange: (newMode: GameMode) => void;
+  language: AppLanguage;
+  onLanguageChange: (lang: AppLanguage) => void;
   isLightMode: boolean;
   isAdminUser: boolean;
   credits: number;
@@ -95,6 +102,103 @@ interface PracticeDrillPreset {
   targetPatternId: string;
   presetGrid: number[][];
   presetTray: BlockShape[];
+}
+
+interface UndoSnapshot {
+  grid: number[][];
+  tray: (BlockShape | null)[];
+  score: number;
+  level: number;
+  combo: number;
+  patternsInRun: number;
+  targetPattern: TargetPattern;
+  scrambledLetterGrid?: string[][];
+}
+
+/**
+ * Creates a shuffled 8x8 letter matrix from a target letterGrid so every letter
+ * is on its own square on the board and shuffled around for the child to swap & respell!
+ */
+function createShuffledLetterBoard(
+  targetLetters: string[][],
+  rng: () => number
+): string[][] {
+  const coords: { r: number; c: number; ch: string }[] = [];
+  for (let r = 0; r < GRID_SIZE; r++) {
+    for (let c = 0; c < GRID_SIZE; c++) {
+      const ch = targetLetters[r]?.[c] || '';
+      if (ch) {
+        coords.push({ r, c, ch });
+      }
+    }
+  }
+
+  const chars = coords.map((item) => item.ch);
+  // Fisher-Yates shuffle
+  for (let i = chars.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    const temp = chars[i];
+    chars[i] = chars[j];
+    chars[j] = temp;
+  }
+
+  // Ensure at least 80% of letters start out of place so children get a real scramble
+  for (let i = 0; i < chars.length; i++) {
+    if (chars[i] === coords[i].ch) {
+      const swapIdx = (i + 1) % chars.length;
+      const tmp = chars[i];
+      chars[i] = chars[swapIdx];
+      chars[swapIdx] = tmp;
+    }
+  }
+
+  const board = Array.from({ length: GRID_SIZE }, () =>
+    Array(GRID_SIZE).fill('')
+  );
+  coords.forEach((coord, idx) => {
+    board[coord.r][coord.c] = chars[idx];
+  });
+  return board;
+}
+
+function getLetterScrambleProgress(
+  currentLetters: string[][],
+  targetLetters?: string[][]
+): {
+  correctCount: number;
+  totalLetters: number;
+  percentage: number;
+  isComplete: boolean;
+} {
+  if (!targetLetters) {
+    return {
+      correctCount: 0,
+      totalLetters: 0,
+      percentage: 0,
+      isComplete: false,
+    };
+  }
+  let correctCount = 0;
+  let totalLetters = 0;
+  for (let r = 0; r < GRID_SIZE; r++) {
+    for (let c = 0; c < GRID_SIZE; c++) {
+      const targetCh = targetLetters[r]?.[c] || '';
+      if (targetCh) {
+        totalLetters++;
+        if (currentLetters[r]?.[c] === targetCh) {
+          correctCount++;
+        }
+      }
+    }
+  }
+  const percentage =
+    totalLetters > 0 ? Math.round((correctCount / totalLetters) * 100) : 0;
+  return {
+    correctCount,
+    totalLetters,
+    percentage,
+    isComplete: totalLetters > 0 && correctCount === totalLetters,
+  };
 }
 
 const PRACTICE_DRILLS: PracticeDrillPreset[] = [
@@ -199,16 +303,6 @@ const PRACTICE_DRILLS: PracticeDrillPreset[] = [
     ],
   },
 ];
-
-interface UndoSnapshot {
-  grid: number[][];
-  tray: (BlockShape | null)[];
-  score: number;
-  level: number;
-  combo: number;
-  patternsInRun: number;
-  targetPattern: TargetPattern;
-}
 
 function doesPlacementFitStrictlyInBlueprint(
   shape: BlockShape,
@@ -472,6 +566,8 @@ export const ArcadeArena: React.FC<ArcadeArenaProps> = ({
   mode,
   onModeChange,
   isLightMode,
+  language,
+  onLanguageChange,
   credits,
   highScore,
   dailyHighScore,
@@ -491,24 +587,50 @@ export const ArcadeArena: React.FC<ArcadeArenaProps> = ({
   );
   const batchCountRef = useRef<number>(1);
 
-  // Separate Screen Switcher: 'play' (Dedicated Game Screen), 'visual_example' (Visual Example Screen), 'ai_helper' (AI Helper Screen)
+  // Separate Screen Switcher: 'play' (Dedicated Game Screen), 'visual_example' (Visual Example & 30-Game Guide Screen), 'ai_helper' (AI Helper Screen)
   const [subScreen, setSubScreen] = useState<ArenaSubScreen>('play');
 
-  // Concrete Monument Puzzle State (NYC Skyline, Eiffel Tower, Golden Gate Bridge, Statue of Liberty, Tokyo Pagoda)
-  const [monumentIdx, setMonumentIdx] = useState<number>(0);
+  // Concrete Monument Puzzle State (37 Brain Workout & English Sentence Games)
+  const initialWordPuzzleIdx = Math.max(
+    0,
+    MONUMENT_PUZZLES.findIndex((m) => m.id === 'sentence_find_airport')
+  );
+  const [monumentIdx, setMonumentIdx] = useState<number>(initialWordPuzzleIdx);
   const [completedMonumentIds, setCompletedMonumentIds] = useState<string[]>(
     []
   );
   // Start with a clean blank 8x8 grid from scratch (user can toggle guide outline if desired)
   const [showBlueprintGuideOnBoard, setShowBlueprintGuideOnBoard] =
     useState<boolean>(false);
+  // Clean on-board modal for "How It Works / Cara Bermain & Brain Workout Description" without adding vertical scroll
+  const [showHowItWorksModal, setShowHowItWorksModal] =
+    useState<boolean>(false);
+
   const activeMonument: TargetMonumentPuzzle =
     MONUMENT_PUZZLES[monumentIdx % MONUMENT_PUZZLES.length];
+  const isLetterScrambleGame = Boolean(
+    mode === 'puzzle' && activeMonument.letterGrid
+  );
 
   const [gameState, setGameState] = useState<GameState>('PLAYING');
   const [grid, setGrid] = useState<number[][]>(() =>
     Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(0))
   );
+  // Shuffled 8x8 letter matrix when playing a Scramble Sentence / Word game
+  const [scrambledLetterGrid, setScrambledLetterGrid] = useState<string[][]>(
+    () => {
+      const startPuzzle = MONUMENT_PUZZLES[initialWordPuzzleIdx];
+      return startPuzzle?.letterGrid
+        ? createShuffledLetterBoard(startPuzzle.letterGrid, rngRef.current)
+        : Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(''));
+    }
+  );
+  // Currently selected letter square {r, c} on the 8x8 board waiting to be swapped with another square
+  const [swapSelectedCell, setSwapSelectedCell] = useState<{
+    r: number;
+    c: number;
+  } | null>(null);
+
   const [tray, setTray] = useState<(BlockShape | null)[]>(() => {
     const empty = Array.from({ length: GRID_SIZE }, () =>
       Array(GRID_SIZE).fill(0)
@@ -559,10 +681,27 @@ export const ArcadeArena: React.FC<ArcadeArenaProps> = ({
   const activeSkin =
     BLOCK_SKINS.find((s) => s.id === activeSkinId) || BLOCK_SKINS[0];
 
-  const monumentProgress = React.useMemo(
-    () => getMonumentProgress(grid, activeMonument.blueprint),
-    [grid, activeMonument.blueprint]
-  );
+  const monumentProgress = React.useMemo(() => {
+    if (mode === 'puzzle' && activeMonument.letterGrid) {
+      const letterProg = getLetterScrambleProgress(
+        scrambledLetterGrid,
+        activeMonument.letterGrid
+      );
+      return {
+        filledRequired: letterProg.correctCount,
+        totalRequired: letterProg.totalLetters,
+        percentage: letterProg.percentage,
+        isComplete: letterProg.isComplete,
+      };
+    }
+    return getMonumentProgress(grid, activeMonument.blueprint);
+  }, [
+    grid,
+    activeMonument.blueprint,
+    activeMonument.letterGrid,
+    mode,
+    scrambledLetterGrid,
+  ]);
 
   const bestMove = React.useMemo(
     () =>
@@ -587,6 +726,20 @@ export const ArcadeArena: React.FC<ArcadeArenaProps> = ({
     }, 2400);
   }, []);
 
+  const speakEnglishTextAloud = useCallback((textToSpeak: string) => {
+    try {
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const utter = new SpeechSynthesisUtterance(textToSpeak);
+        utter.lang = 'en-US';
+        utter.rate = 0.88; // Clear, child-friendly slower English pronunciation
+        window.speechSynthesis.speak(utter);
+      }
+    } catch {
+      // Ignore on unsupported browsers
+    }
+  }, []);
+
   useEffect(() => {
     if (gameState === 'PLAYING' && subScreen === 'play') {
       soundEngine.startRhythmLoop(palette.bpm, level, (beat) => {
@@ -606,6 +759,36 @@ export const ArcadeArena: React.FC<ArcadeArenaProps> = ({
         ((targetIndex % MONUMENT_PUZZLES.length) + MONUMENT_PUZZLES.length) %
         MONUMENT_PUZZLES.length;
       const monument = MONUMENT_PUZZLES[safeIdx];
+      setMonumentIdx(safeIdx);
+      setSwapSelectedCell(null);
+      setScore(0);
+      setCombo(0);
+      setUndoHistory([]);
+      setGameState('PLAYING');
+
+      if (monument.letterGrid) {
+        // Scramble Sentence / Word Mode: Every letter square is placed on the 8x8 board and shuffled!
+        const filledBlueprintGrid = monument.blueprint.map((row) => [...row]);
+        const shuffledBoard = createShuffledLetterBoard(
+          monument.letterGrid,
+          rngRef.current
+        );
+        setGrid(filledBlueprintGrid);
+        setScrambledLetterGrid(shuffledBoard);
+        setTray([null, null, null]);
+        setSelectedTrayIdx(null);
+        setShowBlueprintGuideOnBoard(false);
+        setShowAIHintOnBoard(false);
+        setSubScreen('play');
+        setLastFeedbackBanner(
+          `Tap any 2 shuffled letter squares to swap them and spell: "${
+            monument.sentenceEn || monument.name
+          }"!`
+        );
+        soundEngine.playBlockSelect();
+        return;
+      }
+
       const emptyGrid = Array.from({ length: GRID_SIZE }, () =>
         Array(GRID_SIZE).fill(0)
       );
@@ -618,21 +801,19 @@ export const ArcadeArena: React.FC<ArcadeArenaProps> = ({
         monument.letterGrid
       );
 
-      setMonumentIdx(safeIdx);
       setGrid(emptyGrid);
+      setScrambledLetterGrid(
+        Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(''))
+      );
       setTray(tailoredBatch);
       setSelectedTrayIdx(0);
-      setScore(0);
-      setCombo(0);
-      setUndoHistory([]);
-      setGameState('PLAYING');
       if (clearPatternFromScratch) {
         setShowBlueprintGuideOnBoard(false);
         setShowAIHintOnBoard(false);
       }
       setSubScreen('play');
       setLastFeedbackBanner(
-        `Started ${monument.emoji} ${monument.name} From Scratch! Place blocks to build the target.`
+        `Started ${monument.emoji} ${monument.name} / ${monument.nameId} From Scratch! Place blocks to build the target.`
       );
       soundEngine.playBlockSelect();
     },
@@ -654,6 +835,7 @@ export const ArcadeArena: React.FC<ArcadeArenaProps> = ({
       }))
     );
     setSelectedTrayIdx(0);
+    setSwapSelectedCell(null);
     setTargetPattern(matchedPattern);
     setUndoHistory([]);
     setGameState('PLAYING');
@@ -690,6 +872,7 @@ export const ArcadeArena: React.FC<ArcadeArenaProps> = ({
       setGrid(emptyGrid);
       setTray(initialBatch);
       setSelectedTrayIdx(0);
+      setSwapSelectedCell(null);
       setScore(0);
       setLevel(1);
       setCombo(0);
@@ -718,22 +901,34 @@ export const ArcadeArena: React.FC<ArcadeArenaProps> = ({
     setCombo(0);
     setPatternsInRun(0);
     setEarnedCreditsInRun(0);
-    const emptyGrid = Array.from({ length: GRID_SIZE }, () =>
-      Array(GRID_SIZE).fill(0)
-    );
-    setGrid(emptyGrid);
-    const freshBatch =
-      mode === 'puzzle'
-        ? generatePuzzleModeBatch(
-            emptyGrid,
-            activeMonument.blueprint,
-            rngRef.current,
-            1,
-            activeMonument.letterGrid
-          )
-        : generateBlockBatch(rngRef.current, 1);
-    setTray(freshBatch);
-    setSelectedTrayIdx(0);
+    setSwapSelectedCell(null);
+
+    if (mode === 'puzzle' && activeMonument.letterGrid) {
+      setGrid(activeMonument.blueprint.map((row) => [...row]));
+      setScrambledLetterGrid(
+        createShuffledLetterBoard(activeMonument.letterGrid, rngRef.current)
+      );
+      setTray([null, null, null]);
+      setSelectedTrayIdx(null);
+    } else {
+      const emptyGrid = Array.from({ length: GRID_SIZE }, () =>
+        Array(GRID_SIZE).fill(0)
+      );
+      setGrid(emptyGrid);
+      const freshBatch =
+        mode === 'puzzle'
+          ? generatePuzzleModeBatch(
+              emptyGrid,
+              activeMonument.blueprint,
+              rngRef.current,
+              1,
+              activeMonument.letterGrid
+            )
+          : generateBlockBatch(rngRef.current, 1);
+      setTray(freshBatch);
+      setSelectedTrayIdx(0);
+    }
+
     setUndoHistory([]);
     setShowBlueprintGuideOnBoard(false);
     setShowAIHintOnBoard(false);
@@ -767,22 +962,34 @@ export const ArcadeArena: React.FC<ArcadeArenaProps> = ({
     setCombo(0);
     setPatternsInRun(0);
     setEarnedCreditsInRun(0);
-    const emptyGrid = Array.from({ length: GRID_SIZE }, () =>
-      Array(GRID_SIZE).fill(0)
-    );
-    setGrid(emptyGrid);
-    const freshBatch =
-      mode === 'puzzle'
-        ? generatePuzzleModeBatch(
-            emptyGrid,
-            activeMonument.blueprint,
-            rngRef.current,
-            1,
-            activeMonument.letterGrid
-          )
-        : generateBlockBatch(rngRef.current, 1);
-    setTray(freshBatch);
-    setSelectedTrayIdx(0);
+    setSwapSelectedCell(null);
+
+    if (mode === 'puzzle' && activeMonument.letterGrid) {
+      setGrid(activeMonument.blueprint.map((row) => [...row]));
+      setScrambledLetterGrid(
+        createShuffledLetterBoard(activeMonument.letterGrid, rngRef.current)
+      );
+      setTray([null, null, null]);
+      setSelectedTrayIdx(null);
+    } else {
+      const emptyGrid = Array.from({ length: GRID_SIZE }, () =>
+        Array(GRID_SIZE).fill(0)
+      );
+      setGrid(emptyGrid);
+      const freshBatch =
+        mode === 'puzzle'
+          ? generatePuzzleModeBatch(
+              emptyGrid,
+              activeMonument.blueprint,
+              rngRef.current,
+              1,
+              activeMonument.letterGrid
+            )
+          : generateBlockBatch(rngRef.current, 1);
+      setTray(freshBatch);
+      setSelectedTrayIdx(0);
+    }
+
     setUndoHistory([]);
     setShowBlueprintGuideOnBoard(false);
     setShowAIHintOnBoard(false);
@@ -811,6 +1018,10 @@ export const ArcadeArena: React.FC<ArcadeArenaProps> = ({
     setCombo(last.combo);
     setPatternsInRun(last.patternsInRun);
     setTargetPattern(last.targetPattern);
+    if (last.scrambledLetterGrid) {
+      setScrambledLetterGrid(last.scrambledLetterGrid);
+    }
+    setSwapSelectedCell(null);
     const firstAvail = last.tray.findIndex((s) => s !== null);
     setSelectedTrayIdx(firstAvail !== -1 ? firstAvail : 0);
     setUndoHistory((prev) => prev.slice(0, -1));
@@ -819,7 +1030,254 @@ export const ArcadeArena: React.FC<ArcadeArenaProps> = ({
     setLastFeedbackBanner('Move Undone · Try a different placement!');
   };
 
+  /**
+   * Swaps two letter squares (r1, c1) and (r2, c2) on the 8x8 board for Scramble Sentence/Word games
+   */
+  const executeLetterSquareSwap = useCallback(
+    (r1: number, c1: number, r2: number, c2: number) => {
+      if (!activeMonument.letterGrid) return;
+      if (r1 === r2 && c1 === c2) {
+        setSwapSelectedCell(null);
+        return;
+      }
+
+      const char1 = scrambledLetterGrid[r1]?.[c1] || '';
+      const char2 = scrambledLetterGrid[r2]?.[c2] || '';
+      if (!char1 || !char2) return;
+
+      setUndoHistory((prev) => [
+        ...prev.slice(-14),
+        {
+          grid: grid.map((r) => [...r]),
+          tray: tray.map((t) =>
+            t ? { ...t, cells: t.cells.map((r) => [...r]) } : null
+          ),
+          score,
+          level,
+          combo,
+          patternsInRun,
+          targetPattern,
+          scrambledLetterGrid: scrambledLetterGrid.map((r) => [...r]),
+        },
+      ]);
+
+      const nextLetters = scrambledLetterGrid.map((r) => [...r]);
+      nextLetters[r1][c1] = char2;
+      nextLetters[r2][c2] = char1;
+
+      const prevProg = getLetterScrambleProgress(
+        scrambledLetterGrid,
+        activeMonument.letterGrid
+      );
+      const nextProg = getLetterScrambleProgress(
+        nextLetters,
+        activeMonument.letterGrid
+      );
+
+      // Check if an entire row or word was just completed!
+      let completedWordEn = '';
+      let completedWordId = '';
+      if (activeMonument.wordTranslations) {
+        for (const w of activeMonument.wordTranslations) {
+          let wasCorrectBefore = true;
+          let isCorrectNow = true;
+          for (let cc = w.startCol; cc <= w.endCol; cc++) {
+            const targetCh = activeMonument.letterGrid[w.row]?.[cc] || '';
+            if (scrambledLetterGrid[w.row]?.[cc] !== targetCh) {
+              wasCorrectBefore = false;
+            }
+            if (nextLetters[w.row]?.[cc] !== targetCh) {
+              isCorrectNow = false;
+            }
+          }
+          if (!wasCorrectBefore && isCorrectNow) {
+            completedWordEn = w.en;
+            completedWordId = w.id;
+            break;
+          }
+        }
+      }
+
+      const newlyCorrectDelta = Math.max(
+        0,
+        nextProg.correctCount - prevProg.correctCount
+      );
+      const swapPoints =
+        (newlyCorrectDelta > 0 ? newlyCorrectDelta * 65 : 10) * level +
+        (completedWordEn ? 250 : 0) +
+        (nextProg.isComplete ? activeMonument.bonusPoints * level : 0);
+      const swapCredits =
+        newlyCorrectDelta * 300 +
+        (completedWordEn ? 1500 : 0) +
+        (nextProg.isComplete ? activeMonument.bonusCredits : 0);
+
+      const nextScore = score + swapPoints;
+      const nextCombo = newlyCorrectDelta > 0 ? combo + 1 : 0;
+      const nextPatterns = nextProg.isComplete
+        ? patternsInRun + 1
+        : patternsInRun;
+      const nextLevel = nextProg.isComplete ? level + 1 : level;
+
+      setScrambledLetterGrid(nextLetters);
+      setSwapSelectedCell(null);
+      setScore(nextScore);
+      setCombo(nextCombo);
+      setPatternsInRun(nextPatterns);
+      setLevel(nextLevel);
+      setEarnedCreditsInRun((prev) => prev + swapCredits);
+
+      if (nextProg.isComplete) {
+        soundEngine.playLevelCompleteChime(triggerVisualShake);
+        confetti({
+          particleCount: 95,
+          spread: 90,
+          origin: { y: 0.55 },
+        });
+        flashChimeAlert(
+          `🎉 "${
+            activeMonument.sentenceEn || activeMonument.name
+          }" SPELLED 100%! (+${swapPoints} PTS)`
+        );
+        if (activeMonument.sentenceEn && soundOn) {
+          speakEnglishTextAloud(activeMonument.sentenceEn);
+        }
+        setCompletedMonumentIds((prev) =>
+          Array.from(new Set([...prev, activeMonument.id]))
+        );
+        setGameState('MONUMENT_COMPLETE');
+      } else if (completedWordEn) {
+        soundEngine.playBlockSetCompleteChime(triggerVisualShake);
+        confetti({
+          particleCount: 30,
+          spread: 60,
+          origin: { y: 0.65 },
+        });
+        flashChimeAlert(
+          `🔔 WORD SPELLED: "${completedWordEn}" = "${completedWordId}"! (${nextProg.percentage}%)`
+        );
+        if (soundOn) {
+          speakEnglishTextAloud(completedWordEn);
+        }
+      } else if (newlyCorrectDelta > 0) {
+        soundEngine.playBlockPlace(nextCombo, level);
+      } else {
+        soundEngine.playBlockRotate();
+      }
+
+      onRecordRunUpdate({
+        score: nextScore,
+        level: nextLevel,
+        patternsInRun: nextPatterns,
+        earnedCredits: swapCredits,
+        mode,
+      });
+    },
+    [
+      activeMonument,
+      combo,
+      flashChimeAlert,
+      grid,
+      level,
+      mode,
+      onRecordRunUpdate,
+      patternsInRun,
+      score,
+      scrambledLetterGrid,
+      soundOn,
+      speakEnglishTextAloud,
+      targetPattern,
+      tray,
+      triggerVisualShake,
+    ]
+  );
+
+  /**
+   * Smart Hint for Children: Automatically finds 1 misplaced letter square and swaps it into its correct position!
+   */
+  const handleAutoFixOneLetter = useCallback(() => {
+    if (!activeMonument.letterGrid) return;
+    if (gameState !== 'PLAYING') {
+      setGameState('PLAYING');
+    }
+
+    // If the child already tapped one misplaced cell, fix that specific square first!
+    let targetR = -1;
+    let targetC = -1;
+
+    if (
+      swapSelectedCell &&
+      activeMonument.letterGrid[swapSelectedCell.r]?.[swapSelectedCell.c] &&
+      scrambledLetterGrid[swapSelectedCell.r]?.[swapSelectedCell.c] !==
+        activeMonument.letterGrid[swapSelectedCell.r]?.[swapSelectedCell.c]
+    ) {
+      targetR = swapSelectedCell.r;
+      targetC = swapSelectedCell.c;
+    } else {
+      for (let r = 0; r < GRID_SIZE; r++) {
+        for (let c = 0; c < GRID_SIZE; c++) {
+          const needed = activeMonument.letterGrid[r]?.[c] || '';
+          if (needed && scrambledLetterGrid[r]?.[c] !== needed) {
+            targetR = r;
+            targetC = c;
+            break;
+          }
+        }
+        if (targetR !== -1) break;
+      }
+    }
+
+    if (targetR === -1 || targetC === -1) return;
+    const neededChar = activeMonument.letterGrid[targetR][targetC];
+
+    // Find another misplaced cell currently holding neededChar
+    for (let r = 0; r < GRID_SIZE; r++) {
+      for (let c = 0; c < GRID_SIZE; c++) {
+        if (r === targetR && c === targetC) continue;
+        const currentAtCell = scrambledLetterGrid[r]?.[c] || '';
+        const targetAtCell = activeMonument.letterGrid[r]?.[c] || '';
+        if (currentAtCell === neededChar && currentAtCell !== targetAtCell) {
+          executeLetterSquareSwap(targetR, targetC, r, c);
+          return;
+        }
+      }
+    }
+  }, [
+    activeMonument.letterGrid,
+    executeLetterSquareSwap,
+    gameState,
+    scrambledLetterGrid,
+    swapSelectedCell,
+  ]);
+
+  /**
+   * Re-shuffles all letter squares on the 8x8 board
+   */
+  const handleReshuffleLetterBoard = useCallback(() => {
+    if (!activeMonument.letterGrid) return;
+    setGrid(activeMonument.blueprint.map((row) => [...row]));
+    setScrambledLetterGrid(
+      createShuffledLetterBoard(activeMonument.letterGrid, rngRef.current)
+    );
+    setSwapSelectedCell(null);
+    setGameState('PLAYING');
+    soundEngine.playBlockRotate();
+    flashChimeAlert(
+      language === 'id'
+        ? '🔀 Kotak Huruf Diacak Ulang! Ketuk 2 kotak untuk menukar huruf.'
+        : '🔀 Letter Squares Shuffled! Tap any 2 squares to swap letters.'
+    );
+  }, [
+    activeMonument.blueprint,
+    activeMonument.letterGrid,
+    flashChimeAlert,
+    language,
+  ]);
+
   const handleRotateSelected = useCallback(() => {
+    if (isLetterScrambleGame) {
+      handleReshuffleLetterBoard();
+      return;
+    }
     if (selectedTrayIdx === null) return;
     if (gameState !== 'PLAYING') {
       setGameState('PLAYING');
@@ -837,7 +1295,13 @@ export const ArcadeArena: React.FC<ArcadeArenaProps> = ({
     );
     soundEngine.playBlockRotate();
     setLastFeedbackBanner(`Rotated ${currentShape.name} 90° · Ready to place`);
-  }, [gameState, selectedTrayIdx, tray]);
+  }, [
+    gameState,
+    handleReshuffleLetterBoard,
+    isLetterScrambleGame,
+    selectedTrayIdx,
+    tray,
+  ]);
 
   const executePlacementAtAnchor = useCallback(
     (
@@ -902,7 +1366,7 @@ export const ArcadeArena: React.FC<ArcadeArenaProps> = ({
       }
 
       // =======================================================================
-      // PUZZLE MODE BRANCH: 30 Games (Animals, Cars, Fruits, Scramble Words, etc.)
+      // PUZZLE MODE BRANCH: Picture & Block Games
       // =======================================================================
       if (mode === 'puzzle') {
         const nextProgress = getMonumentProgress(
@@ -954,7 +1418,7 @@ export const ArcadeArena: React.FC<ArcadeArenaProps> = ({
         if (monumentJustCompleted) {
           soundEngine.playLevelCompleteChime(triggerVisualShake);
           flashChimeAlert(
-            `🎉 ${activeMonument.emoji} ${activeMonument.name} COMPLETE! (+${monumentBonusPts} PTS)`
+            `🎉 ${activeMonument.emoji} ${activeMonument.name} / ${activeMonument.nameId} SELESAI! (+${monumentBonusPts} PTS)`
           );
           setCompletedMonumentIds((prev) =>
             Array.from(new Set([...prev, activeMonument.id]))
@@ -1220,6 +1684,10 @@ export const ArcadeArena: React.FC<ArcadeArenaProps> = ({
   );
 
   const handleExecuteAIBestMove = useCallback(() => {
+    if (isLetterScrambleGame) {
+      handleAutoFixOneLetter();
+      return;
+    }
     if (!bestMove) return;
     if (gameState !== 'PLAYING') {
       setGameState('PLAYING');
@@ -1231,12 +1699,45 @@ export const ArcadeArena: React.FC<ArcadeArenaProps> = ({
       bestMove.col,
       bestMove.rotatedCells
     );
-  }, [bestMove, executePlacementAtAnchor, gameState]);
+  }, [
+    bestMove,
+    executePlacementAtAnchor,
+    gameState,
+    handleAutoFixOneLetter,
+    isLetterScrambleGame,
+  ]);
 
   const handleCellClick = (row: number, col: number) => {
     if (gameState !== 'PLAYING') {
       setGameState('PLAYING');
     }
+
+    // SCRAMBLE SENTENCE / WORD MODE: Tap 2 letter squares on the 8x8 board to swap them!
+    if (isLetterScrambleGame && activeMonument.letterGrid) {
+      const clickedChar = scrambledLetterGrid[row]?.[col] || '';
+      if (!clickedChar) return; // Empty space between words
+
+      if (!swapSelectedCell) {
+        setSwapSelectedCell({ r: row, c: col });
+        soundEngine.playBlockSelect();
+        return;
+      }
+
+      if (swapSelectedCell.r === row && swapSelectedCell.c === col) {
+        setSwapSelectedCell(null);
+        soundEngine.playBlockRotate();
+        return;
+      }
+
+      executeLetterSquareSwap(
+        swapSelectedCell.r,
+        swapSelectedCell.c,
+        row,
+        col
+      );
+      return;
+    }
+
     const activeIdx =
       selectedTrayIdx !== null && tray[selectedTrayIdx]
         ? selectedTrayIdx
@@ -1266,6 +1767,10 @@ export const ArcadeArena: React.FC<ArcadeArenaProps> = ({
 
   const handleQuickPlaceBlock = useCallback(
     (idxToPlace: number) => {
+      if (isLetterScrambleGame) {
+        handleAutoFixOneLetter();
+        return;
+      }
       if (gameState !== 'PLAYING') {
         setGameState('PLAYING');
       }
@@ -1299,6 +1804,8 @@ export const ArcadeArena: React.FC<ArcadeArenaProps> = ({
       executePlacementAtAnchor,
       gameState,
       grid,
+      handleAutoFixOneLetter,
+      isLetterScrambleGame,
       mode,
       targetPattern,
       tray,
@@ -1376,7 +1883,9 @@ export const ArcadeArena: React.FC<ArcadeArenaProps> = ({
         handleRotateSelected();
       } else if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
-        if (selectedTrayIdx !== null && tray[selectedTrayIdx]) {
+        if (isLetterScrambleGame) {
+          handleAutoFixOneLetter();
+        } else if (selectedTrayIdx !== null && tray[selectedTrayIdx]) {
           handleQuickPlaceBlock(selectedTrayIdx);
         }
       } else if (e.key === 'h' || e.key === 'H') {
@@ -1423,7 +1932,7 @@ export const ArcadeArena: React.FC<ArcadeArenaProps> = ({
   const selectedShape =
     selectedTrayIdx !== null ? tray[selectedTrayIdx] : null;
   const resolvedHoverAnchor =
-    hoverCoord && selectedShape
+    hoverCoord && selectedShape && !isLetterScrambleGame
       ? resolveSmartPlacementAnchor(
           grid,
           selectedShape,
@@ -1434,7 +1943,7 @@ export const ArcadeArena: React.FC<ArcadeArenaProps> = ({
       : null;
 
   const isCellInHoverPreview = (r: number, c: number): boolean => {
-    if (!selectedShape) return false;
+    if (isLetterScrambleGame || !selectedShape) return false;
     const anchor = resolvedHoverAnchor || hoverCoord;
     if (!anchor) return false;
 
@@ -1452,7 +1961,7 @@ export const ArcadeArena: React.FC<ArcadeArenaProps> = ({
   };
 
   const isCellInAIHint = (r: number, c: number): boolean => {
-    if (!showAIHintOnBoard || !bestMove) return false;
+    if (isLetterScrambleGame || !showAIHintOnBoard || !bestMove) return false;
     const relR = r - bestMove.row;
     const relC = c - bestMove.col;
     if (
@@ -1478,18 +1987,35 @@ export const ArcadeArena: React.FC<ArcadeArenaProps> = ({
     soundEngine.hapticsEnabled = next;
   };
 
+  const cycleLanguage = () => {
+    const nextLang: AppLanguage =
+      language === 'bilingual' ? 'id' : language === 'id' ? 'en' : 'bilingual';
+    onLanguageChange(nextLang);
+    soundEngine.playBlockSelect();
+  };
+
   const nextMonumentInList =
     MONUMENT_PUZZLES[(monumentIdx + 1) % MONUMENT_PUZZLES.length];
+
+  const showId = language === 'id' || language === 'bilingual';
+  const showEn = language === 'en' || language === 'bilingual';
 
   return (
     <div className="max-w-[440px] mx-auto">
       {/* ===================================================================== */}
-      {/* SCREEN 2: DEDICATED VISUAL EXAMPLE SCREEN                             */}
+      {/* SCREEN 2: DEDICATED VISUAL EXAMPLE & 37-GAME BRAIN WORKOUT GUIDE      */}
       {/* ===================================================================== */}
       {subScreen === 'visual_example' && (
         <VisualExampleCard
           isPracticeMode={mode === 'practice'}
           isPuzzleMode={mode === 'puzzle'}
+          language={language}
+          onLanguageChange={onLanguageChange}
+          activeMonumentIndex={monumentIdx}
+          onSelectAndPlayMonument={(idx) => {
+            onModeChange('puzzle');
+            loadMonumentPuzzle(idx, true);
+          }}
           onStartPuzzleMode={() => {
             onModeChange('puzzle');
             loadMonumentPuzzle(monumentIdx, true);
@@ -1525,7 +2051,7 @@ export const ArcadeArena: React.FC<ArcadeArenaProps> = ({
       {subScreen === 'play' && (
         <div
           style={{ backgroundColor: palette.bgCanvas }}
-          className="rounded-2xl border border-slate-200 dark:border-slate-800/90 p-2.5 sm:p-3.5 transition-colors duration-300 space-y-2 shadow-sm"
+          className="rounded-2xl border border-slate-200 dark:border-slate-800/90 p-2.5 sm:p-3 transition-colors duration-300 space-y-2 shadow-sm"
         >
           {/* Compact Top Bar: Mode Switcher + Score + Credits + Essential Icons */}
           <div
@@ -1555,6 +2081,28 @@ export const ArcadeArena: React.FC<ArcadeArenaProps> = ({
                 <button
                   type="button"
                   onClick={() => {
+                    // Quick jump directly to the first Sentence Scramble game ("CAN YOU HELP ME FIND THE AIRPORT")
+                    onModeChange('puzzle');
+                    const firstSentenceIdx = MONUMENT_PUZZLES.findIndex(
+                      (m) => m.category === 'Scramble Words'
+                    );
+                    loadMonumentPuzzle(
+                      firstSentenceIdx !== -1 ? firstSentenceIdx : 0,
+                      true
+                    );
+                  }}
+                  className={`px-2 py-1 text-[11px] font-bold rounded-md transition-colors cursor-pointer ${
+                    isLetterScrambleGame
+                      ? 'bg-emerald-500 text-slate-950'
+                      : 'text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/15'
+                  }`}
+                  title="Jump directly to English Sentence & Word Scramble Games"
+                >
+                  🔤 {language === 'id' ? 'Kalimat' : 'Words'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
                     onModeChange('arcade');
                     startNewGame('arcade');
                   }}
@@ -1569,30 +2117,16 @@ export const ArcadeArena: React.FC<ArcadeArenaProps> = ({
                 <button
                   type="button"
                   onClick={() => {
-                    onModeChange('daily');
-                    startNewGame('daily');
-                  }}
-                  className={`px-2 py-1 text-[11px] font-bold rounded-md transition-colors cursor-pointer ${
-                    mode === 'daily'
-                      ? 'bg-amber-500 text-slate-950'
-                      : 'text-slate-600 dark:text-slate-400'
-                  }`}
-                >
-                  Daily
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
                     onModeChange('practice');
                     loadPracticeDrill(0);
                   }}
                   className={`px-2 py-1 text-[11px] font-bold rounded-md transition-colors cursor-pointer ${
                     mode === 'practice'
-                      ? 'bg-emerald-500 text-slate-950'
+                      ? 'bg-amber-500 text-slate-950'
                       : 'text-slate-600 dark:text-slate-400'
                   }`}
                 >
-                  Practice
+                  {language === 'id' ? 'Latihan' : 'Practice'}
                 </button>
               </div>
 
@@ -1600,7 +2134,7 @@ export const ArcadeArena: React.FC<ArcadeArenaProps> = ({
               <div className="flex items-center gap-2 font-mono text-right">
                 <div>
                   <span className="text-[10px] text-slate-400 block leading-none">
-                    SCORE
+                    {language === 'id' ? 'SKOR' : 'SCORE'}
                   </span>
                   <span className="text-sm font-extrabold text-slate-900 dark:text-white tabular-nums">
                     {score.toLocaleString()}
@@ -1608,7 +2142,7 @@ export const ArcadeArena: React.FC<ArcadeArenaProps> = ({
                 </div>
                 <div className="pl-2 border-l border-slate-200 dark:border-slate-800">
                   <span className="text-[10px] text-amber-500 block leading-none">
-                    CREDITS
+                    {language === 'id' ? 'KOIN' : 'CREDITS'}
                   </span>
                   <span className="text-xs font-bold text-amber-600 dark:text-amber-400 tabular-nums">
                     {credits.toLocaleString()}
@@ -1617,7 +2151,7 @@ export const ArcadeArena: React.FC<ArcadeArenaProps> = ({
               </div>
             </div>
 
-            {/* Row 2: Compact 30-Game Selector / Pattern Bar + Guide & Audio Toggles */}
+            {/* Row 2: Compact 37-Game Selector / Pattern Bar + Guide & Audio Toggles */}
             <div className="flex items-center justify-between gap-1.5 pt-1 border-t border-slate-200/70 dark:border-slate-800/80">
               {mode === 'puzzle' ? (
                 <div className="flex items-center gap-1.5 min-w-0 flex-1">
@@ -1641,30 +2175,47 @@ export const ArcadeArena: React.FC<ArcadeArenaProps> = ({
                     )}
                   </div>
 
-                  {/* Categorized 30-Game Selector Dropdown */}
+                  {/* Categorized 37-Game Selector Dropdown (Scramble Sentences & Words listed first for easy access!) */}
                   <select
                     value={monumentIdx}
                     onChange={(e) =>
                       loadMonumentPuzzle(Number(e.target.value), true)
                     }
                     className="bg-slate-100 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 text-slate-900 dark:text-white text-[11px] font-bold rounded-lg px-1.5 py-1 focus:outline-none cursor-pointer truncate min-w-0 flex-1"
-                    aria-label="Select Fun Game or Puzzle"
+                    aria-label="Select Brain Workout Game"
                   >
                     {(
                       [
-                        'Animals',
-                        'Cars & Rides',
-                        'Fruits & Treats',
-                        'Scramble Words',
-                        'Scramble Blocks',
-                        'Landmarks',
+                        {
+                          en: 'Scramble Words',
+                          id: 'Susun Kalimat & Kata Inggris',
+                        },
+                        { en: 'Animals', id: 'Hewan Lucu' },
+                        { en: 'Cars & Rides', id: 'Kendaraan' },
+                        { en: 'Fruits & Treats', id: 'Buah & Camilan' },
+                        { en: 'Scramble Blocks', id: 'Susun Balok' },
+                        { en: 'Landmarks', id: 'Monumen Dunia' },
                       ] as const
                     ).map((cat) => (
-                      <optgroup key={cat} label={`── ${cat} ──`}>
+                      <optgroup
+                        key={cat.en}
+                        label={
+                          language === 'id'
+                            ? `── ${cat.id} ──`
+                            : language === 'en'
+                            ? `── ${cat.en} ──`
+                            : `── ${cat.en} / ${cat.id} ──`
+                        }
+                      >
                         {MONUMENT_PUZZLES.map((mon, idx) =>
-                          mon.category === cat ? (
+                          mon.category === cat.en ? (
                             <option key={mon.id} value={idx}>
-                              {mon.emoji} {mon.name}
+                              {mon.emoji}{' '}
+                              {language === 'id'
+                                ? mon.nameId
+                                : language === 'en'
+                                ? mon.name
+                                : `${mon.name} / ${mon.nameId}`}
                             </option>
                           ) : null
                         )}
@@ -1677,9 +2228,9 @@ export const ArcadeArena: React.FC<ArcadeArenaProps> = ({
                     type="button"
                     onClick={() => loadMonumentPuzzle(monumentIdx + 1, true)}
                     className="px-1.5 py-1 rounded-md bg-violet-500/15 hover:bg-violet-500/25 border border-violet-500/40 text-violet-700 dark:text-violet-300 text-[10px] font-extrabold whitespace-nowrap cursor-pointer shrink-0"
-                    title="Next Fun Game (30 Games Available!)"
+                    title="Next Brain Workout Game"
                   >
-                    🎲 Next
+                    🎲 {language === 'id' ? 'Lanjut' : 'Next'}
                   </button>
 
                   <span className="text-[10px] font-mono font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap shrink-0">
@@ -1687,7 +2238,7 @@ export const ArcadeArena: React.FC<ArcadeArenaProps> = ({
                   </span>
                 </div>
               ) : (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 min-w-0 flex-1">
                   <div className="grid grid-cols-3 gap-0.5 p-0.5 bg-white dark:bg-slate-950 rounded border border-slate-300 dark:border-slate-800 shrink-0">
                     {targetPattern.matrix.map((row, rIdx) =>
                       row.map((val, cIdx) => (
@@ -1707,12 +2258,16 @@ export const ArcadeArena: React.FC<ArcadeArenaProps> = ({
                     )}
                   </div>
                   <span className="text-xs font-bold text-slate-900 dark:text-white truncate">
-                    Target: {targetPattern.name}
+                    {language === 'id'
+                      ? `Target: ${targetPattern.nameId || targetPattern.name}`
+                      : language === 'en'
+                      ? `Target: ${targetPattern.name}`
+                      : `${targetPattern.name} / ${targetPattern.nameId || ''}`}
                   </span>
                 </div>
               )}
 
-              {/* Quick Compact Utility Icons: Guide Outline, Undo, Sound */}
+              {/* Quick Compact Utility Icons: Answer Key / Guide, Undo, Sound */}
               <div className="flex items-center gap-1 shrink-0">
                 {mode === 'puzzle' && (
                   <button
@@ -1725,10 +2280,20 @@ export const ArcadeArena: React.FC<ArcadeArenaProps> = ({
                         ? 'bg-violet-500 text-slate-950 border-violet-400'
                         : 'bg-slate-100 dark:bg-slate-950 border-slate-300 dark:border-slate-800 text-slate-600 dark:text-slate-400'
                     }`}
-                    title="Toggle Blueprint Guide Outline on 8x8 Grid"
+                    title={
+                      isLetterScrambleGame
+                        ? 'Show Small Target Letter Hints in Each Square'
+                        : 'Toggle Blueprint Guide Outline on 8x8 Grid'
+                    }
                   >
                     <Eye className="w-3 h-3" />
-                    <span>{showBlueprintGuideOnBoard ? 'On' : 'Guide'}</span>
+                    <span>
+                      {showBlueprintGuideOnBoard
+                        ? 'On'
+                        : language === 'id'
+                        ? 'Kunci'
+                        : 'Peek'}
+                    </span>
                   </button>
                 )}
 
@@ -1760,6 +2325,63 @@ export const ArcadeArena: React.FC<ArcadeArenaProps> = ({
                 </button>
               </div>
             </div>
+
+            {/* Row 3: Slim Brain Workout Bar + 1-Tap "Cara Main / How It Works" + Language Switcher */}
+            <div className="flex items-center justify-between gap-1.5 pt-1 border-t border-slate-200/70 dark:border-slate-800/80">
+              <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                <Brain className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 truncate">
+                  {mode === 'puzzle'
+                    ? language === 'id'
+                      ? activeMonument.brainSkillId
+                      : language === 'en'
+                      ? activeMonument.brainSkillEn
+                      : `${activeMonument.brainSkillEn} · ${activeMonument.brainSkillId}`
+                    : language === 'id'
+                    ? 'Latihan Otak: Memori Spasial & Fokus Pola 3×3'
+                    : language === 'en'
+                    ? 'Brain Workout: Spatial Working Memory & 3×3 Pattern Focus'
+                    : 'Brain Workout / Latihan Otak: 3×3 Pattern & Line Focus'}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-1 shrink-0">
+                {/* 1-Tap Bilingual Description & How It Works Overlay Button */}
+                <button
+                  type="button"
+                  onClick={() => setShowHowItWorksModal((prev) => !prev)}
+                  className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold border transition-colors cursor-pointer flex items-center gap-1 ${
+                    showHowItWorksModal
+                      ? 'bg-emerald-500 text-slate-950 border-emerald-400'
+                      : 'bg-emerald-500/15 hover:bg-emerald-500/25 border-emerald-500/40 text-emerald-700 dark:text-emerald-300'
+                  }`}
+                  title="Read Game Description & How It Works (English & Bahasa Indonesia)"
+                >
+                  <BookOpen className="w-3 h-3" />
+                  <span>
+                    {language === 'id'
+                      ? 'Cara Main'
+                      : language === 'en'
+                      ? 'How It Works'
+                      : 'Cara Main / How?'}
+                  </span>
+                </button>
+
+                {/* 1-Tap Language Cycle Pill (ID+EN / ID / EN) */}
+                <button
+                  type="button"
+                  onClick={cycleLanguage}
+                  className="px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-950 hover:bg-slate-200 dark:hover:bg-slate-800 border border-slate-300 dark:border-slate-700 text-[10px] font-extrabold text-slate-700 dark:text-slate-200 cursor-pointer"
+                  title="Switch Language: Bilingual (EN+ID) / Bahasa Indonesia / English"
+                >
+                  {language === 'bilingual'
+                    ? '🇮🇩+🇬🇧'
+                    : language === 'id'
+                    ? '🇮🇩 ID'
+                    : '🇬🇧 EN'}
+                </button>
+              </div>
+            </div>
           </div>
 
           {/* Transient Chime Alert (Only appears for 2s when a chime rings) */}
@@ -1787,10 +2409,6 @@ export const ArcadeArena: React.FC<ArcadeArenaProps> = ({
             >
               {grid.map((row, rIdx) =>
                 row.map((cellValue, cIdx) => {
-                  const inPreview = isCellInHoverPreview(rIdx, cIdx);
-                  const inAIHint = isCellInAIHint(rIdx, cIdx);
-                  const previewValid = resolvedHoverAnchor !== null;
-
                   const blueprintTargetVal =
                     mode === 'puzzle'
                       ? activeMonument.blueprint[rIdx]?.[cIdx] || 0
@@ -1803,6 +2421,97 @@ export const ArcadeArena: React.FC<ArcadeArenaProps> = ({
                     mode === 'puzzle'
                       ? activeMonument.letterGrid?.[rIdx]?.[cIdx] || ''
                       : '';
+
+                  // ===========================================================
+                  // LETTER SCRAMBLE BOARD BRANCH (Every letter on its own square, shuffled!)
+                  // ===========================================================
+                  if (isLetterScrambleGame && activeMonument.letterGrid) {
+                    const currentScrambledChar =
+                      scrambledLetterGrid[rIdx]?.[cIdx] || '';
+                    const isLetterTile = Boolean(targetLetter);
+                    const isCorrectlySpelled =
+                      isLetterTile && currentScrambledChar === targetLetter;
+                    const isSelectedForSwap =
+                      swapSelectedCell?.r === rIdx &&
+                      swapSelectedCell?.c === cIdx;
+
+                    const tileBg = !isLetterTile
+                      ? palette.cellEmpty
+                      : isSelectedForSwap
+                      ? '#38bdf8'
+                      : isCorrectlySpelled
+                      ? '#10b981'
+                      : blueprintHex || '#f59e0b';
+
+                    const tileBorder = !isLetterTile
+                      ? 'transparent'
+                      : isSelectedForSwap
+                      ? '#ffffff'
+                      : isCorrectlySpelled
+                      ? '#34d399'
+                      : '#fde047';
+
+                    return (
+                      <button
+                        key={`scramble_${rIdx}_${cIdx}`}
+                        type="button"
+                        disabled={!isLetterTile}
+                        onClick={() => handleCellClick(rIdx, cIdx)}
+                        style={{
+                          backgroundColor: tileBg,
+                          borderColor: tileBorder,
+                        }}
+                        className={`w-full h-full rounded-lg border-2 flex flex-col items-center justify-center relative transition-all duration-150 focus:outline-none ${
+                          !isLetterTile
+                            ? 'opacity-30 cursor-default'
+                            : isSelectedForSwap
+                            ? 'scale-110 z-10 shadow-lg cursor-pointer ring-2 ring-sky-300'
+                            : 'hover:scale-105 cursor-pointer shadow-xs'
+                        }`}
+                        aria-label={
+                          isLetterTile
+                            ? `Letter Square ${currentScrambledChar} at Row ${
+                                rIdx + 1
+                              } Column ${cIdx + 1}`
+                            : `Empty Space`
+                        }
+                      >
+                        {isLetterTile && (
+                          <>
+                            <span
+                              className={`text-sm sm:text-base font-mono font-black leading-none select-none ${
+                                isSelectedForSwap
+                                  ? 'text-slate-950'
+                                  : isCorrectlySpelled
+                                  ? 'text-slate-950'
+                                  : 'text-slate-950'
+                              }`}
+                            >
+                              {currentScrambledChar}
+                            </span>
+
+                            {/* Small checkmark when letter is in the right spot, or target letter hint when Peek/Kunci is ON */}
+                            {isCorrectlySpelled ? (
+                              <span className="absolute top-0.5 right-0.5 text-[8px] font-black text-slate-950/80 leading-none">
+                                ✓
+                              </span>
+                            ) : showBlueprintGuideOnBoard ? (
+                              <span className="absolute bottom-0.5 right-0.5 text-[8px] font-mono font-extrabold text-slate-950/85 bg-white/75 px-0.5 rounded leading-none">
+                                {targetLetter}
+                              </span>
+                            ) : null}
+                          </>
+                        )}
+                      </button>
+                    );
+                  }
+
+                  // ===========================================================
+                  // STANDARD BLOCK PLACEMENT CELL RENDERING
+                  // ===========================================================
+                  const inPreview = isCellInHoverPreview(rIdx, cIdx);
+                  const inAIHint = isCellInAIHint(rIdx, cIdx);
+                  const previewValid = resolvedHoverAnchor !== null;
 
                   const blockHex =
                     cellValue > 0
@@ -1873,34 +2582,15 @@ export const ArcadeArena: React.FC<ArcadeArenaProps> = ({
                       }`}
                       aria-label={`Grid Row ${rIdx + 1} Column ${cIdx + 1}`}
                     >
-                      {/* Scramble Word Letter on Placed Block */}
-                      {cellValue > 0 && targetLetter ? (
-                        <span className="text-xs sm:text-sm font-mono font-black text-slate-950 drop-shadow-xs select-none">
-                          {targetLetter}
-                        </span>
-                      ) : null}
-
-                      {/* Scramble Word Faint Guide Letter when Guide is ON */}
-                      {cellValue === 0 &&
-                        !inAIHint &&
-                        !inPreview &&
-                        isUnfilledBlueprintCell &&
-                        targetLetter && (
-                          <span className="text-[10px] font-mono font-extrabold text-slate-700 dark:text-slate-200 opacity-75 select-none">
-                            {targetLetter}
-                          </span>
-                        )}
-
                       {cellValue === 0 && inAIHint && !inPreview && (
                         <span className="text-[9px] font-mono font-bold text-emerald-600 dark:text-emerald-300">
-                          {targetLetter || 'AI'}
+                          AI
                         </span>
                       )}
                       {cellValue === 0 &&
                         !inAIHint &&
                         !inPreview &&
                         isUnfilledBlueprintCell &&
-                        !targetLetter &&
                         blueprintHex && (
                           <span
                             style={{ backgroundColor: blueprintHex }}
@@ -1908,22 +2598,18 @@ export const ArcadeArena: React.FC<ArcadeArenaProps> = ({
                           />
                         )}
                       {cellValue > 0 &&
-                        !targetLetter &&
                         activeSkin.innerStyle === 'dot' && (
                           <span className="w-2 h-2 rounded-full bg-slate-950/75" />
                         )}
                       {cellValue > 0 &&
-                        !targetLetter &&
                         activeSkin.innerStyle === 'prism' && (
                           <span className="w-3.5 h-3.5 border border-white/65" />
                         )}
                       {cellValue > 0 &&
-                        !targetLetter &&
                         activeSkin.innerStyle === 'striated' && (
                           <span className="w-full h-1 bg-slate-950/45" />
                         )}
                       {cellValue > 0 &&
-                        !targetLetter &&
                         activeSkin.innerStyle === 'monolith' && (
                           <span
                             style={{ backgroundColor: blockHex }}
@@ -1936,30 +2622,244 @@ export const ArcadeArena: React.FC<ArcadeArenaProps> = ({
               )}
             </div>
 
+            {/* OVERLAY: BILINGUAL BRAIN WORKOUT & HOW IT WORKS CARD (Zero-Scroll On-Board Popup) */}
+            {showHowItWorksModal && (
+              <div className="absolute inset-0 bg-slate-950/94 backdrop-blur-md rounded-2xl p-3.5 flex flex-col justify-between text-left border-2 border-emerald-500/60 z-20 overflow-y-auto">
+                <div className="space-y-2">
+                  {/* Top Header + Language Switcher + Close Button */}
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-2xl shrink-0">
+                        {mode === 'puzzle' ? activeMonument.emoji : '🧠'}
+                      </span>
+                      <div className="min-w-0">
+                        <div className="text-[10px] font-mono uppercase tracking-wider text-emerald-400 font-bold">
+                          {mode === 'puzzle'
+                            ? `${activeMonument.category} / ${activeMonument.categoryId}`
+                            : 'Arcade Pattern Workout / Latihan Pola'}
+                        </div>
+                        <h3 className="text-sm font-extrabold font-display text-white truncate">
+                          {mode === 'puzzle'
+                            ? `${activeMonument.name} · ${activeMonument.nameId}`
+                            : `${targetPattern.name} · ${
+                                targetPattern.nameId || ''
+                              }`}
+                        </h3>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setShowHowItWorksModal(false)}
+                      className="p-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 cursor-pointer shrink-0"
+                      aria-label="Close How It Works"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  {/* Quick 3-Mode Language Pill Bar inside Modal */}
+                  <div className="flex items-center gap-1 bg-slate-900 p-1 rounded-lg border border-slate-800">
+                    {(
+                      [
+                        { id: 'bilingual', label: '🇮🇩+🇬🇧 Bilingual' },
+                        { id: 'id', label: '🇮🇩 Bahasa Indonesia' },
+                        { id: 'en', label: '🇬🇧 English' },
+                      ] as { id: AppLanguage; label: string }[]
+                    ).map((opt) => (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => onLanguageChange(opt.id)}
+                        className={`flex-1 py-1 px-1.5 rounded text-[10px] font-extrabold transition-colors cursor-pointer ${
+                          language === opt.id
+                            ? 'bg-emerald-500 text-slate-950'
+                            : 'text-slate-300 hover:text-white'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Brain Workout Skill Badge */}
+                  <div className="bg-emerald-500/15 border border-emerald-500/40 rounded-lg p-2 space-y-0.5">
+                    <div className="text-[10px] font-mono font-bold uppercase text-emerald-300 flex items-center gap-1">
+                      <Brain className="w-3 h-3" />
+                      <span>
+                        {language === 'id'
+                          ? 'Manfaat Latihan Otak:'
+                          : language === 'en'
+                          ? 'Brain Workout Benefit:'
+                          : 'Brain Workout / Manfaat Latihan Otak:'}
+                      </span>
+                    </div>
+                    {showEn && (
+                      <p className="text-[11px] font-bold text-white leading-snug">
+                        🇬🇧{' '}
+                        {mode === 'puzzle'
+                          ? activeMonument.brainSkillEn
+                          : 'Spatial Working Memory, 3×3 Pattern Recognition & Line Planning'}
+                      </p>
+                    )}
+                    {showId && (
+                      <p className="text-[11px] font-semibold text-emerald-200 leading-snug">
+                        🇮🇩{' '}
+                        {mode === 'puzzle'
+                          ? activeMonument.brainSkillId
+                          : 'Memori Kerja Spasial, Pengenalan Pola 3×3 & Perencanaan Baris'}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Game Description (EN & ID) */}
+                  <div className="bg-slate-900/90 border border-slate-800 rounded-lg p-2 space-y-1">
+                    <div className="text-[10px] font-mono font-bold uppercase text-sky-400">
+                      {language === 'id'
+                        ? 'Tentang Permainan Ini:'
+                        : language === 'en'
+                        ? 'About This Game:'
+                        : 'About This Game / Tentang Permainan:'}
+                    </div>
+                    {showEn && (
+                      <p className="text-[11px] text-slate-200 leading-snug">
+                        🇬🇧{' '}
+                        {mode === 'puzzle'
+                          ? activeMonument.description
+                          : 'Arrange polyomino blocks anywhere on the 8×8 board to form the 3×3 target shape or clear full 8-cell rows and columns.'}
+                      </p>
+                    )}
+                    {showId && (
+                      <p className="text-[11px] text-amber-200/95 leading-snug">
+                        🇮🇩{' '}
+                        {mode === 'puzzle'
+                          ? activeMonument.descriptionId
+                          : 'Susun balok pada papan 8×8 untuk membentuk pola target 3×3 atau penuhi baris dan kolom 8 kotak.'}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Step-by-Step How It Works (EN & ID) */}
+                  <div className="bg-slate-900/90 border border-slate-800 rounded-lg p-2 space-y-1">
+                    <div className="text-[10px] font-mono font-bold uppercase text-violet-400">
+                      {language === 'id'
+                        ? 'Cara Bermain (Langkah demi Langkah):'
+                        : language === 'en'
+                        ? 'How It Works (Step-by-Step):'
+                        : 'How It Works / Cara Bermain:'}
+                    </div>
+                    {showEn && (
+                      <p className="text-[11px] text-slate-200 leading-snug">
+                        🇬🇧{' '}
+                        {mode === 'puzzle'
+                          ? activeMonument.howItWorksEn
+                          : '1) Pick any block below. 2) Tap Rotate (R) if needed. 3) Tap the 8×8 grid (or tap Place) to complete the target pattern!'}
+                      </p>
+                    )}
+                    {showId && (
+                      <p className="text-[11px] text-emerald-200 leading-snug">
+                        🇮🇩{' '}
+                        {mode === 'puzzle'
+                          ? activeMonument.howItWorksId
+                          : '1) Pilih balok di bawah. 2) Ketuk Putar bila perlu. 3) Ketuk papan 8×8 (atau ketuk Pasang) untuk menyelesaikan pola!'}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Bottom Action Buttons inside Modal */}
+                <div className="flex items-center justify-between gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowHowItWorksModal(false);
+                      setSubScreen('visual_example');
+                    }}
+                    className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-sky-300 text-[11px] font-bold cursor-pointer"
+                  >
+                    📚{' '}
+                    {language === 'id'
+                      ? 'Katalog Semua Game'
+                      : 'All Games Guide'}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (mode === 'puzzle') {
+                        setShowBlueprintGuideOnBoard(true);
+                      }
+                      setShowHowItWorksModal(false);
+                    }}
+                    className="px-3.5 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-[11px] font-extrabold cursor-pointer flex items-center gap-1"
+                  >
+                    <Play className="w-3 h-3 fill-current" />
+                    <span>
+                      {language === 'id'
+                        ? 'Mulai Main!'
+                        : language === 'en'
+                        ? 'Play Now!'
+                        : 'Mainkan / Play!'}
+                    </span>
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* OVERLAY: MONUMENT_COMPLETE */}
             {gameState === 'MONUMENT_COMPLETE' && (
               <div className="absolute inset-0 bg-slate-950/92 backdrop-blur-md rounded-2xl p-5 flex flex-col items-center justify-center text-center space-y-3 border border-violet-500/50">
                 <div className="text-3xl">{activeMonument.emoji}</div>
                 <div className="space-y-1">
                   <div className="text-[11px] text-emerald-400 font-mono font-bold uppercase">
-                    100% {activeMonument.category} Complete!
+                    100% {activeMonument.category} / {activeMonument.categoryId}{' '}
+                    Selesai!
                   </div>
-                  <h3 className="text-xl font-extrabold font-display text-white">
-                    {activeMonument.name}
+                  <h3 className="text-lg font-extrabold font-display text-white">
+                    {activeMonument.sentenceEn
+                      ? `"${activeMonument.sentenceEn}"`
+                      : `${activeMonument.name} · ${activeMonument.nameId}`}
                   </h3>
+                  {activeMonument.sentenceId && (
+                    <p className="text-xs font-bold text-amber-300">
+                      🇮🇩 &ldquo;{activeMonument.sentenceId}&rdquo;
+                    </p>
+                  )}
+                  <p className="text-[11px] text-emerald-300 font-semibold">
+                    🧠 {activeMonument.brainSkillEn} /{' '}
+                    {activeMonument.brainSkillId}
+                  </p>
                   <p className="text-xs font-mono text-amber-400">
                     +{activeMonument.bonusPoints * Math.max(1, level - 1)} PTS ·
                     +{activeMonument.bonusCredits.toLocaleString()} CR
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center justify-center gap-2">
+                  {activeMonument.sentenceEn && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        speakEnglishTextAloud(activeMonument.sentenceEn!)
+                      }
+                      className="px-3 py-2 bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold text-xs rounded-xl flex items-center gap-1 cursor-pointer"
+                    >
+                      <Volume2 className="w-3.5 h-3.5" />
+                      <span>
+                        {language === 'id' ? 'Dengar Kalimat' : 'Hear Sentence'}
+                      </span>
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => loadMonumentPuzzle(monumentIdx + 1, true)}
                     className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-xl flex items-center gap-1 cursor-pointer"
                   >
                     <span>
-                      Next: {nextMonumentInList.emoji} {nextMonumentInList.name}
+                      {language === 'id' ? 'Lanjut:' : 'Next:'}{' '}
+                      {nextMonumentInList.emoji}{' '}
+                      {language === 'id'
+                        ? nextMonumentInList.nameId
+                        : nextMonumentInList.name}
                     </span>
                     <ArrowRight className="w-3.5 h-3.5" />
                   </button>
@@ -1968,7 +2868,7 @@ export const ArcadeArena: React.FC<ArcadeArenaProps> = ({
                     onClick={() => loadMonumentPuzzle(monumentIdx, true)}
                     className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-white font-semibold text-xs rounded-xl cursor-pointer"
                   >
-                    Replay
+                    {language === 'id' ? 'Acak Lagi' : 'Shuffle Again'}
                   </button>
                 </div>
               </div>
@@ -1978,20 +2878,20 @@ export const ArcadeArena: React.FC<ArcadeArenaProps> = ({
             {gameState === 'PAUSED' && (
               <div className="absolute inset-0 bg-slate-950/90 backdrop-blur-md rounded-2xl p-5 flex flex-col items-center justify-center text-center space-y-3 border border-slate-800">
                 <h3 className="text-xl font-bold font-display text-white">
-                  Game Paused
+                  {language === 'id' ? 'Permainan Dijeda' : 'Game Paused'}
                 </h3>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => setGameState('PLAYING')}
                     className="px-4 py-2 bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold text-xs rounded-lg"
                   >
-                    Resume
+                    {language === 'id' ? 'Lanjutkan' : 'Resume'}
                   </button>
                   <button
                     onClick={() => startNewGame(mode)}
                     className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white font-medium text-xs rounded-lg"
                   >
-                    Start Fresh
+                    {language === 'id' ? 'Mulai Baru' : 'Start Fresh'}
                   </button>
                 </div>
               </div>
@@ -2001,7 +2901,8 @@ export const ArcadeArena: React.FC<ArcadeArenaProps> = ({
             {gameState === 'GAME_OVER' && (
               <div className="absolute inset-0 bg-slate-950/95 backdrop-blur-md rounded-2xl p-5 flex flex-col items-center justify-center text-center space-y-3 border border-slate-800">
                 <h3 className="text-xl font-extrabold font-display text-white">
-                  Final Score: {score.toLocaleString()}
+                  {language === 'id' ? 'Skor Akhir:' : 'Final Score:'}{' '}
+                  {score.toLocaleString()}
                 </h3>
                 <div className="flex flex-wrap items-center justify-center gap-2">
                   <button
@@ -2009,138 +2910,296 @@ export const ArcadeArena: React.FC<ArcadeArenaProps> = ({
                     className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-lg flex items-center gap-1"
                   >
                     <Play className="w-3.5 h-3.5 fill-current" />
-                    <span>Start New Game</span>
+                    <span>
+                      {language === 'id' ? 'Mulai Baru' : 'Start New Game'}
+                    </span>
                   </button>
                   <button
                     onClick={handleContinueWithCredits}
                     className="px-3 py-2 bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold text-xs rounded-lg"
                   >
-                    Continue (10K CR)
+                    {language === 'id'
+                      ? 'Lanjut (10K Koin)'
+                      : 'Continue (10K CR)'}
                   </button>
                 </div>
               </div>
             )}
           </div>
 
-          {/* COMPACT BOTTOM DOCK: 3-Piece Tray + 4 Essential Gameplay Buttons */}
+          {/* COMPACT BOTTOM DOCK: Either English Sentence/Word Comprehension & Tile Shuffler OR 3-Piece Block Tray */}
           <div className="w-full max-w-[360px] sm:max-w-[400px] mx-auto bg-white dark:bg-slate-900/95 border border-slate-200 dark:border-slate-800 rounded-xl p-2.5 space-y-2 shadow-xs">
-            {/* 3-Piece Tray Cards (Compact height so they fit right under the board) */}
-            <div className="grid grid-cols-3 gap-2">
-              {tray.map((shape, idx) => {
-                const isSelected = selectedTrayIdx === idx && shape !== null;
-                const hex = shape
-                  ? activeBlockColors[(shape.colorIndex - 1) % 4]
-                  : '#94a3b8';
-
-                return (
-                  <button
-                    key={shape ? shape.id : `empty_${idx}`}
-                    type="button"
-                    disabled={!shape}
-                    onPointerDown={() => {
-                      if (shape) {
-                        setSelectedTrayIdx(idx);
-                        setIsDraggingBlock(true);
+            {isLetterScrambleGame ? (
+              /* ============================================================= */
+              /* ENGLISH SENTENCE & WORD SCRAMBLE COMPREHENSION DOCK           */
+              /* ============================================================= */
+              <div className="space-y-1.5">
+                {/* Target English Sentence + Bahasa Indonesia Meaning + Speak Button */}
+                <div className="bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg p-2 space-y-1">
+                  <div className="flex items-center justify-between gap-1.5">
+                    <span className="text-[10px] font-mono font-bold uppercase text-sky-600 dark:text-sky-400">
+                      {swapSelectedCell
+                        ? language === 'id'
+                          ? `✨ Huruf "${
+                              scrambledLetterGrid[swapSelectedCell.r]?.[
+                                swapSelectedCell.c
+                              ]
+                            }" dipilih — Ketuk kotak lain untuk menukar!`
+                          : `✨ Letter "${
+                              scrambledLetterGrid[swapSelectedCell.r]?.[
+                                swapSelectedCell.c
+                              ]
+                            }" selected — Tap another square to swap!`
+                        : language === 'id'
+                        ? '👆 Ketuk 2 kotak huruf di papan untuk menukar & mengeja:'
+                        : '👆 Tap any 2 letter squares on board to swap & spell:'}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        speakEnglishTextAloud(
+                          activeMonument.sentenceEn || activeMonument.name
+                        )
                       }
-                    }}
-                    onClick={() => handleTrayBlockClick(idx)}
-                    className={`min-h-[78px] rounded-lg border-2 flex flex-col items-center justify-between p-1.5 transition-all cursor-pointer ${
-                      !shape
-                        ? 'bg-slate-100/50 dark:bg-slate-950/30 border-slate-200 dark:border-slate-800/40 opacity-35 cursor-default'
-                        : isSelected
-                        ? 'bg-sky-50/70 dark:bg-slate-950 border-sky-500 dark:border-sky-400'
-                        : 'bg-slate-50 dark:bg-slate-950/80 border-slate-200 dark:border-slate-800 hover:border-slate-400'
-                    }`}
-                  >
-                    {shape ? (
-                      <>
-                        <div className="flex-1 flex items-center justify-center my-0.5">
-                          <div
-                            style={{
-                              gridTemplateColumns: `repeat(${shape.cells[0].length}, minmax(0, 1fr))`,
-                            }}
-                            className="grid gap-0.5"
+                      className="px-2 py-0.5 rounded bg-sky-500 hover:bg-sky-400 text-slate-950 text-[10px] font-extrabold flex items-center gap-1 shrink-0 cursor-pointer"
+                      title="Listen to English Pronunciation"
+                    >
+                      <Volume2 className="w-3 h-3" />
+                      <span>{language === 'id' ? 'Suara' : 'Speak'}</span>
+                    </button>
+                  </div>
+
+                  {/* Full Target English Sentence */}
+                  <div className="text-xs sm:text-sm font-mono font-black tracking-wide text-slate-900 dark:text-white leading-snug">
+                    🇬🇧 &ldquo;{activeMonument.sentenceEn || activeMonument.name}&rdquo;
+                  </div>
+
+                  {/* Full Indonesian Meaning */}
+                  {activeMonument.sentenceId && (
+                    <div className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 leading-snug">
+                      🇮🇩 Artinya: &ldquo;{activeMonument.sentenceId}&rdquo;
+                    </div>
+                  )}
+
+                  {/* Word-by-Word Interactive Vocabulary Chips (Tap any word to hear it spoken!) */}
+                  {activeMonument.wordTranslations && (
+                    <div className="flex flex-wrap gap-1 pt-1">
+                      {activeMonument.wordTranslations.map((w, wIdx) => {
+                        let wordDone = true;
+                        for (let cc = w.startCol; cc <= w.endCol; cc++) {
+                          if (
+                            scrambledLetterGrid[w.row]?.[cc] !==
+                            activeMonument.letterGrid?.[w.row]?.[cc]
+                          ) {
+                            wordDone = false;
+                            break;
+                          }
+                        }
+                        return (
+                          <button
+                            key={`${w.en}_${wIdx}`}
+                            type="button"
+                            onClick={() => speakEnglishTextAloud(w.en)}
+                            className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold border transition-colors cursor-pointer flex items-center gap-1 ${
+                              wordDone
+                                ? 'bg-emerald-500/20 border-emerald-500/60 text-emerald-700 dark:text-emerald-300'
+                                : 'bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300'
+                            }`}
+                            title={`Tap to hear "${w.en}" (${w.id})`}
                           >
-                            {shape.cells.map((r, rIdx) =>
-                              r.map((val, cIdx) => {
-                                const cellChar =
-                                  shape.cellLetters?.[rIdx]?.[cIdx] || '';
-                                return (
-                                  <div
-                                    key={`${rIdx}_${cIdx}`}
-                                    style={{
-                                      backgroundColor:
-                                        val === 1 ? hex : 'transparent',
-                                    }}
-                                    className={`${
-                                      cellChar ? 'w-4 h-4' : 'w-3 h-3'
-                                    } rounded-[2px] flex items-center justify-center`}
-                                  >
-                                    {val === 1 && cellChar ? (
-                                      <span className="text-[9px] font-mono font-black text-slate-950 leading-none">
-                                        {cellChar}
-                                      </span>
-                                    ) : null}
-                                  </div>
-                                );
-                              })
-                            )}
+                            <span>{wordDone ? '✓' : '•'}</span>
+                            <span className="font-black">{w.en}</span>
+                            <span className="text-[9px] opacity-80">
+                              ({w.id})
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              /* ============================================================= */
+              /* 3-PIECE BLOCK TRAY FOR PICTURE & ARCADE GAMES                 */
+              /* ============================================================= */
+              <div className="grid grid-cols-3 gap-2">
+                {tray.map((shape, idx) => {
+                  const isSelected = selectedTrayIdx === idx && shape !== null;
+                  const hex = shape
+                    ? activeBlockColors[(shape.colorIndex - 1) % 4]
+                    : '#94a3b8';
+
+                  return (
+                    <button
+                      key={shape ? shape.id : `empty_${idx}`}
+                      type="button"
+                      disabled={!shape}
+                      onPointerDown={() => {
+                        if (shape) {
+                          setSelectedTrayIdx(idx);
+                          setIsDraggingBlock(true);
+                        }
+                      }}
+                      onClick={() => handleTrayBlockClick(idx)}
+                      className={`min-h-[78px] rounded-lg border-2 flex flex-col items-center justify-between p-1.5 transition-all cursor-pointer ${
+                        !shape
+                          ? 'bg-slate-100/50 dark:bg-slate-950/30 border-slate-200 dark:border-slate-800/40 opacity-35 cursor-default'
+                          : isSelected
+                          ? 'bg-sky-50/70 dark:bg-slate-950 border-sky-500 dark:border-sky-400'
+                          : 'bg-slate-50 dark:bg-slate-950/80 border-slate-200 dark:border-slate-800 hover:border-slate-400'
+                      }`}
+                    >
+                      {shape ? (
+                        <>
+                          <div className="flex-1 flex items-center justify-center my-0.5">
+                            <div
+                              style={{
+                                gridTemplateColumns: `repeat(${shape.cells[0].length}, minmax(0, 1fr))`,
+                              }}
+                              className="grid gap-0.5"
+                            >
+                              {shape.cells.map((r, rIdx) =>
+                                r.map((val, cIdx) => {
+                                  const cellChar =
+                                    shape.cellLetters?.[rIdx]?.[cIdx] || '';
+                                  return (
+                                    <div
+                                      key={`${rIdx}_${cIdx}`}
+                                      style={{
+                                        backgroundColor:
+                                          val === 1 ? hex : 'transparent',
+                                      }}
+                                      className={`${
+                                        cellChar ? 'w-4 h-4' : 'w-3 h-3'
+                                      } rounded-[2px] flex items-center justify-center`}
+                                    >
+                                      {val === 1 && cellChar ? (
+                                        <span className="text-[9px] font-mono font-black text-slate-950 leading-none">
+                                          {cellChar}
+                                        </span>
+                                      ) : null}
+                                    </div>
+                                  );
+                                })
+                              )}
+                            </div>
                           </div>
+                          <div className="text-[10px] font-bold text-slate-700 dark:text-slate-300 truncate w-full text-center leading-tight">
+                            {isSelected
+                              ? language === 'id'
+                                ? 'Ketuk Pasang'
+                                : 'Tap to Place'
+                              : shape.name}
+                          </div>
+                        </>
+                      ) : (
+                        <div className="flex-1 flex items-center justify-center">
+                          <span className="text-[10px] text-slate-400 dark:text-slate-600 font-mono">
+                            {language === 'id' ? 'Selesai' : 'Done'}
+                          </span>
                         </div>
-                        <div className="text-[10px] font-bold text-slate-700 dark:text-slate-300 truncate w-full text-center leading-tight">
-                          {isSelected ? 'Tap to Place' : shape.name}
-                        </div>
-                      </>
-                    ) : (
-                      <div className="flex-1 flex items-center justify-center">
-                        <span className="text-[10px] text-slate-400 dark:text-slate-600 font-mono">
-                          Done
-                        </span>
-                      </div>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
 
             {/* 4 Essential Gameplay Buttons in 1 Clean Row */}
             <div className="grid grid-cols-4 gap-1.5">
               <button
                 type="button"
-                onClick={() => startNewGame(mode)}
+                onClick={() =>
+                  isLetterScrambleGame
+                    ? handleReshuffleLetterBoard()
+                    : startNewGame(mode)
+                }
                 className="py-2 px-2 bg-emerald-500 hover:bg-emerald-400 text-[11px] font-extrabold text-slate-950 rounded-lg transition-colors flex items-center justify-center gap-1 whitespace-nowrap cursor-pointer"
-                title="Start New Game From Scratch"
+                title={
+                  isLetterScrambleGame
+                    ? 'Shuffle Letter Squares on the Board'
+                    : 'Start New Game From Scratch / Mulai Permainan Baru'
+                }
               >
-                <Play className="w-3 h-3 fill-current shrink-0" />
-                <span>Start</span>
+                {isLetterScrambleGame ? (
+                  <>
+                    <Shuffle className="w-3 h-3 shrink-0" />
+                    <span>{language === 'id' ? 'Acak' : 'Shuffle'}</span>
+                  </>
+                ) : (
+                  <>
+                    <Play className="w-3 h-3 fill-current shrink-0" />
+                    <span>{language === 'id' ? 'Mulai' : 'Start'}</span>
+                  </>
+                )}
               </button>
 
               <button
                 type="button"
                 onClick={() => {
-                  if (selectedTrayIdx !== null && tray[selectedTrayIdx]) {
+                  if (isLetterScrambleGame) {
+                    handleAutoFixOneLetter();
+                  } else if (
+                    selectedTrayIdx !== null &&
+                    tray[selectedTrayIdx]
+                  ) {
                     handleQuickPlaceBlock(selectedTrayIdx);
                   } else {
                     handleExecuteAIBestMove();
                   }
                 }}
-                disabled={!bestMove}
+                disabled={!isLetterScrambleGame && !bestMove}
                 className="py-2 px-2 bg-sky-500 hover:bg-sky-400 disabled:opacity-40 text-[11px] font-extrabold text-slate-950 rounded-lg transition-colors flex items-center justify-center gap-1 whitespace-nowrap cursor-pointer"
-                title="Auto-Place Selected Block"
+                title={
+                  isLetterScrambleGame
+                    ? 'Auto-Swap 1 Misplaced Letter Square Into Correct Position'
+                    : 'Auto-Place Selected Block / Pasang Otomatis'
+                }
               >
                 <Zap className="w-3 h-3 shrink-0" />
-                <span>Place</span>
+                <span>
+                  {isLetterScrambleGame
+                    ? language === 'id'
+                      ? 'Bantu 1'
+                      : 'Fix 1'
+                    : language === 'id'
+                    ? 'Pasang'
+                    : 'Place'}
+                </span>
               </button>
 
               <button
                 type="button"
-                onClick={handleRotateSelected}
-                disabled={selectedTrayIdx === null || !tray[selectedTrayIdx]}
+                onClick={() => {
+                  if (isLetterScrambleGame) {
+                    loadMonumentPuzzle(monumentIdx + 1, true);
+                  } else {
+                    handleRotateSelected();
+                  }
+                }}
+                disabled={
+                  !isLetterScrambleGame &&
+                  (selectedTrayIdx === null || !tray[selectedTrayIdx])
+                }
                 className="py-2 px-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-40 text-[11px] font-bold text-slate-800 dark:text-sky-400 rounded-lg transition-colors flex items-center justify-center gap-1 whitespace-nowrap cursor-pointer"
-                title="Rotate Selected Block"
+                title={
+                  isLetterScrambleGame
+                    ? 'Go to Next Sentence / Kalimat Berikutnya'
+                    : 'Rotate Selected Block / Putar Balok'
+                }
               >
-                <RotateCw className="w-3 h-3 shrink-0" />
-                <span>Rotate</span>
+                {isLetterScrambleGame ? (
+                  <>
+                    <ArrowRight className="w-3 h-3 shrink-0" />
+                    <span>{language === 'id' ? 'Kalimat' : 'Next'}</span>
+                  </>
+                ) : (
+                  <>
+                    <RotateCw className="w-3 h-3 shrink-0" />
+                    <span>{language === 'id' ? 'Putar' : 'Rotate'}</span>
+                  </>
+                )}
               </button>
 
               <button
@@ -2150,28 +3209,40 @@ export const ArcadeArena: React.FC<ArcadeArenaProps> = ({
                 title="Clear All Credits, Points, High Score & Board to 0"
               >
                 <Trash2 className="w-3 h-3 shrink-0" />
-                <span>Clear 0</span>
+                <span>{language === 'id' ? 'Reset 0' : 'Clear 0'}</span>
               </button>
             </div>
 
-            {/* Quiet Bottom Links for Separate Screens (Visual Example & AI Coach) */}
+            {/* Quiet Bottom Links for Separate Screens (All Games Guide & AI Coach) */}
             <div className="flex items-center justify-between pt-1 border-t border-slate-200/60 dark:border-slate-800/70 text-[10px] text-slate-500 dark:text-slate-400">
               <button
                 type="button"
                 onClick={() => setSubScreen('visual_example')}
-                className="hover:text-sky-500 flex items-center gap-1 cursor-pointer"
+                className="hover:text-sky-500 flex items-center gap-1 font-semibold cursor-pointer"
               >
-                <Eye className="w-3 h-3" />
-                <span>Visual Example</span>
+                <BookOpen className="w-3 h-3" />
+                <span>
+                  {language === 'id'
+                    ? 'Panduan Semua Game'
+                    : language === 'en'
+                    ? 'All Games Guide'
+                    : 'Panduan Game / Guide'}
+                </span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setSubScreen('ai_helper')}
-                className="hover:text-emerald-400 flex items-center gap-1 cursor-pointer"
+                className="hover:text-emerald-400 flex items-center gap-1 font-semibold cursor-pointer"
               >
                 <Bot className="w-3 h-3" />
-                <span>AI Helper Screen</span>
+                <span>
+                  {language === 'id'
+                    ? 'Bantuan AI'
+                    : language === 'en'
+                    ? 'AI Helper'
+                    : 'AI Helper / Bantuan AI'}
+                </span>
               </button>
 
               <button
@@ -2179,7 +3250,7 @@ export const ArcadeArena: React.FC<ArcadeArenaProps> = ({
                 onClick={() => handleClearPointsButton(true, 100000)}
                 className="hover:text-amber-400 cursor-pointer"
               >
-                Reset 100K CR
+                Reset 100K
               </button>
             </div>
           </div>

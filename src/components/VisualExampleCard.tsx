@@ -1,30 +1,43 @@
 import React, { useState, useEffect } from 'react';
 import {
+  AppLanguage,
+  MONUMENT_PUZZLES,
+  PuzzleCategory,
+} from '../types/game';
+import {
   Play,
   Pause,
   Sparkles,
   CheckCircle2,
   ArrowRight,
   Gamepad2,
-  Landmark,
+  Brain,
+  BookOpen,
+  Languages,
 } from 'lucide-react';
 
 interface VisualStep {
   stepNumber: number;
-  title: string;
-  subtitle: string;
-  badgeText: string;
-  board: number[][]; // 5x5 mini board: 0 = empty, 1 = existing block, 2 = active incoming piece, 3 = completed pattern glow, 4 = blueprint ghost
-  trayHighlight: number;
+  titleEn: string;
+  titleId: string;
+  subtitleEn: string;
+  subtitleId: string;
+  badgeTextEn: string;
+  badgeTextId: string;
+  board: number[][];
 }
 
 const DEMO_STEPS: VisualStep[] = [
   {
     stepNumber: 1,
-    title: '1. Puzzle Mode: Assemble Concrete Landmarks (NYC Skyline & Eiffel Tower)',
-    subtitle:
-      'In Puzzle Mode, the 8x8 board displays a glowing architectural blueprint silhouette of iconic targets like the NYC Skyline or Eiffel Tower. Your tray deals blocks carved specifically to fit the remaining blueprint cells!',
-    badgeText: 'Target Image: NYC Skyline / Eiffel Tower (+1,500 PTS · +25,000 CR)',
+    titleEn: '1. Choose Any of the 30 Brain Workout Games!',
+    titleId: '1. Pilih Salah Satu dari 30 Permainan Latihan Otak!',
+    subtitleEn:
+      'Pick Animals, Cars, Fruits, Scramble Words, Scramble Blocks, or World Landmarks from the top menu. Tap "Guide" anytime if you want to see the glowing outline on the 8×8 board!',
+    subtitleId:
+      'Pilih kategori Hewan, Mobil, Buah, Susun Kata, Susun Balok, atau Monumen Dunia di menu atas. Ketuk tombol "Guide/Panduan" kapan saja untuk melihat garis bantuan di papan 8×8!',
+    badgeTextEn: 'Step 1: Observe the Target Picture or Word',
+    badgeTextId: 'Langkah 1: Amati Gambar atau Kata Sasaran',
     board: [
       [0, 0, 4, 0, 0],
       [0, 0, 1, 0, 0],
@@ -32,14 +45,17 @@ const DEMO_STEPS: VisualStep[] = [
       [0, 1, 0, 1, 0],
       [1, 1, 0, 1, 1],
     ],
-    trayHighlight: 0,
   },
   {
     stepNumber: 2,
-    title: '2. Snap Blocks onto the Blueprint Silhouette (Or Tap Quick-Place)',
-    subtitle:
-      'Tap any glowing blueprint cell on the grid — or tap the selected tray block a second time (or click AI Auto-Move) to snap the block directly into its exact architectural slot on the skyline.',
-    badgeText: 'Precision Blueprint Snap Locked at Spire Tip',
+    titleEn: '2. Rotate & Place Your 3 Blocks onto the Board',
+    titleId: '2. Putar & Pasang 3 Balok ke Papan Permainan',
+    subtitleEn:
+      'Tap a block in your 3-piece tray, tap "Rotate" to turn it, and tap the board (or tap "Place" for instant smart placement) to build the picture or spell the word!',
+    subtitleId:
+      'Pilih balok di nampan bawah, ketuk "Putar/Rotate" untuk memutar arahnya, lalu ketuk kotak papan (atau tombol "Pasang/Place") untuk menyusun gambar atau mengeja kata!',
+    badgeTextEn: 'Step 2: Hand-Eye Coordination & Spatial Logic',
+    badgeTextId: 'Langkah 2: Koordinasi Mata-Tangan & Logika Ruang',
     board: [
       [0, 0, 2, 0, 0],
       [0, 0, 1, 0, 0],
@@ -47,14 +63,17 @@ const DEMO_STEPS: VisualStep[] = [
       [0, 1, 0, 1, 0],
       [1, 1, 0, 1, 1],
     ],
-    trayHighlight: 0,
   },
   {
     stepNumber: 3,
-    title: '3. 100% Monument Assembled! Level Complete Chime & Credit Windfall',
-    subtitle:
-      'Completing all blocks of the NYC Skyline or Eiffel Tower triggers the Level Complete harmonic bell chime, awards +1,500 to +2,000 Points & +25,000+ Credits, and unlocks your next world landmark!',
-    badgeText: 'MONUMENT ASSEMBLED! +1,500 PTS · +25,000 CREDITS',
+    titleEn: '3. Celebrate with Chimes, Confetti & Bonus Points!',
+    titleId: '3. Rayakan dengan Bunyi Lonceng, Konfeti & Poin!',
+    subtitleEn:
+      'Every 3-block set rings a musical chime with confetti, and finishing 100% of the picture or word unlocks a grand celebration and advances you to the next brain workout!',
+    subtitleId:
+      'Setiap 3 balok selesai akan membunyikan lonceng musik dan konfeti, dan saat gambar atau kata selesai 100%, kamu mendapat perayaan juara dan lanjut ke permainan berikutnya!',
+    badgeTextEn: '100% Complete! Chimes + Confetti Celebration',
+    badgeTextId: '100% Selesai! Perayaan Lonceng + Konfeti Juara',
     board: [
       [0, 0, 3, 0, 0],
       [0, 0, 3, 0, 0],
@@ -62,11 +81,14 @@ const DEMO_STEPS: VisualStep[] = [
       [0, 3, 0, 3, 0],
       [3, 3, 0, 3, 3],
     ],
-    trayHighlight: 1,
   },
 ];
 
 interface VisualExampleCardProps {
+  language: AppLanguage;
+  onLanguageChange: (lang: AppLanguage) => void;
+  activeMonumentIndex: number;
+  onSelectAndPlayMonument: (index: number) => void;
   onStartGuidedDrill?: () => void;
   onStartPuzzleMode?: () => void;
   onReturnToArena?: () => void;
@@ -74,208 +96,474 @@ interface VisualExampleCardProps {
   isPuzzleMode?: boolean;
 }
 
+const CATEGORIES: { key: PuzzleCategory; labelEn: string; labelId: string }[] = [
+  { key: 'Scramble Words', labelEn: '🔤 Scramble Words & Sentences (12)', labelId: '🔤 Susun Kalimat & Kata (12)' },
+  { key: 'Animals', labelEn: '🦁 Animals', labelId: '🦁 Hewan' },
+  { key: 'Cars & Rides', labelEn: '🏎️ Cars & Rides', labelId: '🏎️ Mobil & Kendaraan' },
+  { key: 'Fruits & Treats', labelEn: '🍓 Fruits & Treats', labelId: '🍓 Buah & Makanan' },
+  { key: 'Scramble Blocks', labelEn: '🎲 Scramble Blocks', labelId: '🎲 Susun Balok' },
+  { key: 'Landmarks', labelEn: '🗽 Landmarks', labelId: '🗽 Monumen Dunia' },
+];
+
 export const VisualExampleCard: React.FC<VisualExampleCardProps> = ({
+  language,
+  onLanguageChange,
+  activeMonumentIndex,
+  onSelectAndPlayMonument,
   onStartGuidedDrill,
-  onStartPuzzleMode,
   onReturnToArena,
-  isPracticeMode,
-  isPuzzleMode,
 }) => {
   const [activeStepIdx, setActiveStepIdx] = useState<number>(0);
   const [autoPlay, setAutoPlay] = useState<boolean>(true);
+  const [selectedCategory, setSelectedCategory] = useState<PuzzleCategory | 'ALL'>('ALL');
 
   useEffect(() => {
     if (!autoPlay) return;
     const timer = window.setInterval(() => {
       setActiveStepIdx((prev) => (prev + 1) % DEMO_STEPS.length);
-    }, 3200);
+    }, 3600);
     return () => clearInterval(timer);
   }, [autoPlay]);
 
   const currentStep = DEMO_STEPS[activeStepIdx];
 
+  const filteredGames = MONUMENT_PUZZLES.map((game, index) => ({
+    game,
+    index,
+  })).filter(
+    (item) => selectedCategory === 'ALL' || item.game.category === selectedCategory
+  );
+
   return (
-    <div className="max-w-3xl mx-auto bg-white dark:bg-slate-900/85 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 space-y-6 shadow-sm">
+    <div className="max-w-4xl mx-auto bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-6 space-y-5 shadow-sm">
+      {/* Top Header + Language Switcher + Back to Game */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 dark:border-slate-800 pb-4">
         <div>
-          <div className="text-xs text-sky-600 dark:text-sky-400 font-mono">
-            DEDICATED VISUAL EXAMPLE SCREEN
+          <div className="text-xs text-emerald-600 dark:text-emerald-400 font-mono font-bold flex items-center gap-1.5">
+            <Brain className="w-4 h-4" />
+            <span>
+              {language === 'id'
+                ? `PORTAL LATIHAN OTAK ANAK & PANDUAN ${MONUMENT_PUZZLES.length} PERMAINAN`
+                : language === 'en'
+                ? `CHILDREN’S BRAIN WORKOUT PORTAL & ${MONUMENT_PUZZLES.length}-GAME GUIDE`
+                : `BRAIN WORKOUT PORTAL · PORTAL LATIHAN OTAK ANAK (${MONUMENT_PUZZLES.length} GAMES)`}
+            </span>
           </div>
-          <h2 className="text-xl font-bold font-display text-slate-900 dark:text-white mt-0.5">
-            How Landmark Puzzle Assembly & Block Sets Work
+          <h2 className="text-lg sm:text-xl font-extrabold font-display text-slate-900 dark:text-white mt-0.5">
+            {language === 'id'
+              ? 'Cara Bermain & Manfaat Latihan Otak Setiap Permainan'
+              : language === 'en'
+              ? 'How Each Game Works & Brain Exercise Benefits'
+              : 'How Each Game Works · Cara Bermain & Manfaat Latihan Otak'}
           </h2>
         </div>
 
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setAutoPlay((p) => !p)}
-            className="p-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg transition-colors cursor-pointer"
-            title={autoPlay ? 'Pause Visual Demo' : 'Play Visual Demo'}
-          >
-            {autoPlay ? (
-              <Pause className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-            ) : (
-              <Play className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-            )}
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setAutoPlay(false);
-              setActiveStepIdx((prev) => (prev + 1) % DEMO_STEPS.length);
-            }}
-            className="px-3 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-semibold text-slate-800 dark:text-slate-200 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
-          >
-            <span>Next Step</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </button>
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Language Switcher Pills */}
+          <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-950 p-1 rounded-xl border border-slate-200 dark:border-slate-800">
+            <Languages className="w-3.5 h-3.5 text-sky-500 ml-1" />
+            <button
+              type="button"
+              onClick={() => onLanguageChange('bilingual')}
+              className={`px-2 py-1 rounded-lg text-[11px] font-bold cursor-pointer transition-colors ${
+                language === 'bilingual'
+                  ? 'bg-sky-500 text-slate-950'
+                  : 'text-slate-600 dark:text-slate-400'
+              }`}
+            >
+              🇮🇩+🇬🇧 Bilingual
+            </button>
+            <button
+              type="button"
+              onClick={() => onLanguageChange('id')}
+              className={`px-2 py-1 rounded-lg text-[11px] font-bold cursor-pointer transition-colors ${
+                language === 'id'
+                  ? 'bg-emerald-500 text-slate-950'
+                  : 'text-slate-600 dark:text-slate-400'
+              }`}
+            >
+              🇮🇩 Bahasa
+            </button>
+            <button
+              type="button"
+              onClick={() => onLanguageChange('en')}
+              className={`px-2 py-1 rounded-lg text-[11px] font-bold cursor-pointer transition-colors ${
+                language === 'en'
+                  ? 'bg-violet-500 text-slate-950'
+                  : 'text-slate-600 dark:text-slate-400'
+              }`}
+            >
+              🇬🇧 English
+            </button>
+          </div>
+
+          {onReturnToArena && (
+            <button
+              type="button"
+              onClick={onReturnToArena}
+              className="py-2 px-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+            >
+              <Gamepad2 className="w-4 h-4" />
+              <span>
+                {language === 'id'
+                  ? 'Kembali Bermain'
+                  : language === 'en'
+                  ? 'Back to Game'
+                  : 'Back to Game / Main'}
+              </span>
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Step selector tabs */}
-      <div className="grid grid-cols-3 gap-2 p-1.5 bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800/80 rounded-xl">
-        {DEMO_STEPS.map((s, idx) => (
-          <button
-            key={s.stepNumber}
-            type="button"
-            onClick={() => {
-              setAutoPlay(false);
-              setActiveStepIdx(idx);
-            }}
-            className={`py-2 px-3 rounded-lg text-xs font-semibold transition-colors cursor-pointer whitespace-nowrap ${
-              activeStepIdx === idx
-                ? 'bg-sky-500 text-slate-950 font-bold shadow-xs'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-            }`}
-          >
-            Step {s.stepNumber}
-          </button>
-        ))}
-      </div>
-
-      {/* Animated Mini Board + Target Comparison */}
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center bg-slate-50 dark:bg-slate-950/90 border border-slate-200 dark:border-slate-800/80 rounded-xl p-5">
-        {/* 5x5 Animated Demonstration Grid */}
-        <div className="md:col-span-5 flex flex-col items-center gap-3">
-          <div className="grid grid-cols-5 gap-2 p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xs">
-            {currentStep.board.map((row, rIdx) =>
-              row.map((cell, cIdx) => {
-                let bg = '#cbd5e1';
-                let border = 'transparent';
-                let extraClass = '';
-
-                if (cell === 1) {
-                  bg = '#0284c7';
-                  border = '#38bdf8';
-                } else if (cell === 2) {
-                  bg = '#f59e0b';
-                  border = '#fde047';
-                  extraClass = 'animate-pulse scale-105';
-                } else if (cell === 3) {
-                  bg = '#10b981';
-                  border = '#6ee7b7';
-                  extraClass = 'scale-105 shadow-sm';
-                } else if (cell === 4) {
-                  bg = '#38bdf833';
-                  border = '#38bdf8';
-                  extraClass = 'border-dashed animate-pulse';
-                }
-
-                return (
-                  <div
-                    key={`${rIdx}_${cIdx}`}
-                    style={{ backgroundColor: bg, borderColor: border }}
-                    className={`w-9 h-9 rounded-md border-2 transition-all duration-300 flex items-center justify-center ${extraClass}`}
-                  >
-                    {cell === 2 && (
-                      <span className="w-2.5 h-2.5 rounded-full bg-slate-950" />
-                    )}
-                    {cell === 3 && (
-                      <CheckCircle2 className="w-4 h-4 text-slate-950" />
-                    )}
-                    {cell === 4 && (
-                      <span className="w-1.5 h-1.5 rounded-full bg-sky-400" />
-                    )}
-                  </div>
-                );
-              })
-            )}
-          </div>
-          <div className="text-xs font-mono text-slate-600 dark:text-slate-400 text-center">
-            {currentStep.badgeText}
-          </div>
-        </div>
-
-        {/* Step Explanation & Action */}
-        <div className="md:col-span-7 space-y-4">
-          <h3 className="text-base font-bold font-display text-slate-900 dark:text-white">
-            {currentStep.title}
-          </h3>
-          <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-            {currentStep.subtitle}
-          </p>
-
-          {/* Mini Legend */}
-          <div className="flex flex-wrap items-center gap-4 pt-1 text-xs text-slate-600 dark:text-slate-400">
-            <span className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded-xs border border-dashed border-sky-400 bg-sky-400/20 inline-block" />
-              <span>Target Blueprint</span>
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded-xs bg-sky-500 inline-block" />
-              <span>Assembled Blocks</span>
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded-xs bg-amber-500 inline-block" />
-              <span>Incoming Piece</span>
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded-xs bg-emerald-500 inline-block" />
-              <span>100% Complete</span>
-            </span>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2.5 pt-2">
-            {onStartPuzzleMode && (
+      {/* Animated 3-Step Visual Tutorial */}
+      <div className="bg-slate-50 dark:bg-slate-950/90 border border-slate-200 dark:border-slate-800/80 rounded-xl p-4 space-y-3">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5">
+            {DEMO_STEPS.map((s, idx) => (
               <button
+                key={s.stepNumber}
                 type="button"
-                onClick={onStartPuzzleMode}
-                className="flex-1 py-2.5 px-4 bg-violet-500 hover:bg-violet-400 text-slate-950 font-bold text-xs rounded-xl transition-colors flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap"
+                onClick={() => {
+                  setAutoPlay(false);
+                  setActiveStepIdx(idx);
+                }}
+                className={`py-1.5 px-3 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                  activeStepIdx === idx
+                    ? 'bg-sky-500 text-slate-950'
+                    : 'bg-slate-200/70 dark:bg-slate-900 text-slate-600 dark:text-slate-400'
+                }`}
               >
-                <Landmark className="w-4 h-4" />
-                <span>
-                  {isPuzzleMode
-                    ? 'Continue Puzzle Mode (NYC & Eiffel)'
-                    : 'Play Puzzle Mode (NYC Skyline & Eiffel Tower)'}
-                </span>
+                {language === 'id'
+                  ? `Langkah ${s.stepNumber}`
+                  : `Step ${s.stepNumber}`}
               </button>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setAutoPlay((p) => !p)}
+              className="p-1.5 bg-slate-200 dark:bg-slate-800 rounded-lg text-slate-700 dark:text-slate-200 cursor-pointer"
+              title="Play/Pause Demo"
+            >
+              {autoPlay ? (
+                <Pause className="w-3.5 h-3.5 text-amber-500" />
+              ) : (
+                <Play className="w-3.5 h-3.5 text-emerald-500" />
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setAutoPlay(false);
+                setActiveStepIdx((prev) => (prev + 1) % DEMO_STEPS.length);
+              }}
+              className="px-2.5 py-1.5 bg-slate-200 dark:bg-slate-800 text-xs font-bold rounded-lg flex items-center gap-1 cursor-pointer"
+            >
+              <span>{language === 'id' ? 'Lanjut' : 'Next'}</span>
+              <ArrowRight className="w-3 h-3" />
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
+          {/* 5x5 Animated Demonstration Grid */}
+          <div className="md:col-span-4 flex flex-col items-center gap-2">
+            <div className="grid grid-cols-5 gap-1.5 p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl">
+              {currentStep.board.map((row, rIdx) =>
+                row.map((cell, cIdx) => {
+                  let bg = '#cbd5e1';
+                  let border = 'transparent';
+                  let extraClass = '';
+
+                  if (cell === 1) {
+                    bg = '#0284c7';
+                    border = '#38bdf8';
+                  } else if (cell === 2) {
+                    bg = '#f59e0b';
+                    border = '#fde047';
+                    extraClass = 'animate-pulse scale-105';
+                  } else if (cell === 3) {
+                    bg = '#10b981';
+                    border = '#6ee7b7';
+                    extraClass = 'scale-105';
+                  } else if (cell === 4) {
+                    bg = '#38bdf833';
+                    border = '#38bdf8';
+                    extraClass = 'border-dashed animate-pulse';
+                  }
+
+                  return (
+                    <div
+                      key={`${rIdx}_${cIdx}`}
+                      style={{ backgroundColor: bg, borderColor: border }}
+                      className={`w-8 h-8 rounded-md border-2 transition-all duration-300 flex items-center justify-center ${extraClass}`}
+                    >
+                      {cell === 3 && (
+                        <CheckCircle2 className="w-3.5 h-3.5 text-slate-950" />
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+            <div className="text-[11px] font-mono text-slate-500 dark:text-slate-400 text-center">
+              {language === 'id'
+                ? currentStep.badgeTextId
+                : currentStep.badgeTextEn}
+            </div>
+          </div>
+
+          {/* Bilingual Step Explanation */}
+          <div className="md:col-span-8 space-y-2">
+            {(language === 'en' || language === 'bilingual') && (
+              <div className="space-y-1">
+                <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white">
+                  🇬🇧 {currentStep.titleEn}
+                </h3>
+                <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                  {currentStep.subtitleEn}
+                </p>
+              </div>
+            )}
+
+            {(language === 'id' || language === 'bilingual') && (
+              <div
+                className={`space-y-1 ${
+                  language === 'bilingual'
+                    ? 'pt-2 border-t border-slate-200 dark:border-slate-800'
+                    : ''
+                }`}
+              >
+                <h3 className="text-sm sm:text-base font-bold text-emerald-700 dark:text-emerald-300">
+                  🇮🇩 {currentStep.titleId}
+                </h3>
+                <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
+                  {currentStep.subtitleId}
+                </p>
+              </div>
             )}
 
             {onStartGuidedDrill && (
-              <button
-                type="button"
-                onClick={onStartGuidedDrill}
-                className="py-2.5 px-3.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-xl transition-colors flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap"
-              >
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>
-                  {isPracticeMode ? 'Load Practice Drill' : 'Practice Drill'}
-                </span>
-              </button>
-            )}
-
-            {onReturnToArena && (
-              <button
-                type="button"
-                onClick={onReturnToArena}
-                className="py-2.5 px-3.5 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-semibold text-xs rounded-xl transition-colors flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap"
-              >
-                <Gamepad2 className="w-3.5 h-3.5" />
-                <span>Back to Game</span>
-              </button>
+              <div className="pt-1">
+                <button
+                  type="button"
+                  onClick={onStartGuidedDrill}
+                  className="py-1.5 px-3 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-700 dark:text-emerald-300 font-bold text-xs rounded-lg inline-flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>
+                    {language === 'id'
+                      ? 'Coba Latihan Terpandu (Practice Mode)'
+                      : language === 'en'
+                      ? 'Try Guided Practice Session'
+                      : 'Try Practice Drill · Coba Latihan Terpandu'}
+                  </span>
+                </button>
+              </div>
             )}
           </div>
+        </div>
+      </div>
+
+      {/* Complete 30-Game Brain Workout Guide & Picker */}
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <BookOpen className="w-4 h-4 text-violet-500" />
+            <h3 className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-white">
+              {language === 'id'
+                ? `Daftar Lengkap ${MONUMENT_PUZZLES.length} Permainan Latihan Otak & Kalimat Bahasa Inggris`
+                : language === 'en'
+                ? `All ${MONUMENT_PUZZLES.length} Brain Workout & English Sentence Games — How They Work`
+                : `All ${MONUMENT_PUZZLES.length} Brain Workout & Sentence Games · Daftar Lengkap & Cara Bermain`}
+            </h3>
+          </div>
+
+          {/* Category Filter Pills */}
+          <div className="flex flex-wrap items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setSelectedCategory('ALL')}
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-bold cursor-pointer ${
+                selectedCategory === 'ALL'
+                  ? 'bg-sky-500 text-slate-950'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
+              }`}
+            >
+              {language === 'id'
+                ? `Semua (${MONUMENT_PUZZLES.length})`
+                : `All (${MONUMENT_PUZZLES.length})`}
+            </button>
+            {CATEGORIES.map((cat) => (
+              <button
+                key={cat.key}
+                type="button"
+                onClick={() => setSelectedCategory(cat.key)}
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-bold cursor-pointer ${
+                  selectedCategory === cat.key
+                    ? 'bg-sky-500 text-slate-950'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
+                }`}
+              >
+                {language === 'id' ? cat.labelId : cat.labelEn}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Grid of 30 Bilingual Brain Workout Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[540px] overflow-y-auto pr-1">
+          {filteredGames.map(({ game, index }) => {
+            const isCurrent = index === activeMonumentIndex;
+            return (
+              <div
+                key={game.id}
+                className={`rounded-xl border p-3.5 space-y-2.5 transition-all flex flex-col justify-between ${
+                  isCurrent
+                    ? 'bg-violet-500/10 border-violet-500/50'
+                    : 'bg-slate-50 dark:bg-slate-950/70 border-slate-200 dark:border-slate-800'
+                }`}
+              >
+                <div className="space-y-2">
+                  {/* Card Header with Mini 8x8 Preview & Bilingual Title */}
+                  <div className="flex items-start justify-between gap-2.5">
+                    <div className="flex items-center gap-2.5">
+                      {/* Mini 8x8 Blueprint / Letter Square Preview */}
+                      <div className="grid grid-cols-8 gap-[1px] p-1 bg-white dark:bg-slate-900 rounded-lg border border-slate-300 dark:border-slate-800 shrink-0">
+                        {game.blueprint.map((row, rIdx) =>
+                          row.map((val, cIdx) => {
+                            const letterCh =
+                              game.letterGrid?.[rIdx]?.[cIdx] || '';
+                            return (
+                              <div
+                                key={`${game.id}_${rIdx}_${cIdx}`}
+                                style={{
+                                  backgroundColor:
+                                    val > 0
+                                      ? game.colors[(val - 1) % 4]
+                                      : '#1e293b25',
+                                }}
+                                className="w-2.5 h-2.5 flex items-center justify-center text-[6px] font-black text-slate-950 leading-none rounded-[1px]"
+                              >
+                                {letterCh}
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+
+                      <div>
+                        <div className="text-[10px] font-mono font-bold text-violet-600 dark:text-violet-400 uppercase">
+                          #{index + 1} · {game.category} / {game.categoryId}
+                        </div>
+                        <h4 className="text-sm font-extrabold text-slate-900 dark:text-white leading-snug">
+                          {game.emoji}{' '}
+                          {language === 'id'
+                            ? game.nameId
+                            : language === 'en'
+                            ? game.name
+                            : `${game.name} · ${game.nameId}`}
+                        </h4>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => onSelectAndPlayMonument(index)}
+                      className="px-2.5 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-[11px] rounded-lg flex items-center gap-1 shrink-0 cursor-pointer"
+                    >
+                      <Play className="w-3 h-3 fill-current" />
+                      <span>
+                        {language === 'id'
+                          ? 'Mainkan'
+                          : language === 'en'
+                          ? 'Play'
+                          : 'Play / Main'}
+                      </span>
+                    </button>
+                  </div>
+
+                  {/* Full English Sentence + Indonesian Translation Box for Scramble Words/Sentences */}
+                  {game.sentenceEn && (
+                    <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg px-2.5 py-1.5 space-y-0.5">
+                      <div className="text-xs font-extrabold font-mono text-amber-700 dark:text-amber-300">
+                        🔤 &ldquo;{game.sentenceEn}&rdquo;
+                      </div>
+                      {game.sentenceId && (
+                        <div className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">
+                          🇮🇩 Arti: &ldquo;{game.sentenceId}&rdquo;
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Brain Workout Skill Badge */}
+                  <div className="bg-sky-500/10 border border-sky-500/30 rounded-lg px-2.5 py-1.5 text-[11px]">
+                    <span className="font-extrabold text-sky-700 dark:text-sky-300">
+                      🧠{' '}
+                      {language === 'id'
+                        ? 'Latihan Otak: '
+                        : language === 'en'
+                        ? 'Brain Workout: '
+                        : 'Brain Workout / Latihan Otak: '}
+                    </span>
+                    <span className="font-semibold text-slate-800 dark:text-slate-200">
+                      {language === 'id'
+                        ? game.brainSkillId
+                        : language === 'en'
+                        ? game.brainSkillEn
+                        : `${game.brainSkillEn} (${game.brainSkillId})`}
+                    </span>
+                  </div>
+
+                  {/* English Description & How It Works */}
+                  {(language === 'en' || language === 'bilingual') && (
+                    <div className="text-xs text-slate-600 dark:text-slate-300 space-y-1">
+                      <p>
+                        <strong className="text-slate-900 dark:text-white">
+                          🇬🇧 About:
+                        </strong>{' '}
+                        {game.description}
+                      </p>
+                      <p>
+                        <strong className="text-sky-600 dark:text-sky-400">
+                          How to Play:
+                        </strong>{' '}
+                        {game.howItWorksEn}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Bahasa Indonesia Description & How It Works */}
+                  {(language === 'id' || language === 'bilingual') && (
+                    <div
+                      className={`text-xs text-slate-700 dark:text-slate-300 space-y-1 ${
+                        language === 'bilingual'
+                          ? 'pt-1.5 border-t border-slate-200/70 dark:border-slate-800/80'
+                          : ''
+                      }`}
+                    >
+                      <p>
+                        <strong className="text-emerald-700 dark:text-emerald-400">
+                          🇮🇩 Tentang Permainan:
+                        </strong>{' '}
+                        {game.descriptionId}
+                      </p>
+                      <p>
+                        <strong className="text-amber-600 dark:text-amber-400">
+                          Cara Bermain:
+                        </strong>{' '}
+                        {game.howItWorksId}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>

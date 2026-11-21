@@ -20,6 +20,7 @@ import {
   OperationType,
 } from './firebase';
 import {
+  AppLanguage,
   BlockSkin,
   DigitalVaultItem,
   GameMode,
@@ -35,13 +36,12 @@ import { ArcadeArena } from './components/ArcadeArena';
 import { LeaderboardSection } from './components/LeaderboardSection';
 import { RewardsVaultSection } from './components/RewardsVaultSection';
 import { MonthlyDrawSection } from './components/MonthlyDrawSection';
+import { LearnLinkPromoPage } from './components/LearnLinkPromoPage';
 import { PayPalModal } from './components/PayPalModal';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import {
-  Cloud,
   CreditCard,
   Share2,
-  Bell,
   Trophy,
   Download,
   Ticket,
@@ -49,12 +49,14 @@ import {
   Sun,
   Moon,
   Trash2,
+  GraduationCap,
 } from 'lucide-react';
 
-type ActiveSection = 'arena' | 'leaderboard' | 'vault' | 'giveaway';
+type ActiveSection = 'arena' | 'leaderboard' | 'vault' | 'giveaway' | 'learnlink';
 
 const LOCAL_STORAGE_KEY = 'kinetix_arcade_player_v1';
 const THEME_STORAGE_KEY = 'kinetix_theme_choice_v1';
+const LANGUAGE_STORAGE_KEY = 'kinetix_language_choice_v1';
 
 function loadLocalProfile(): PlayerProfileData {
   try {
@@ -122,6 +124,25 @@ export default function App() {
       return false;
     }
   });
+
+  // Bilingual / Bahasa Indonesia / English Choice for Children's Brain Workout Portal (defaults to bilingual)
+  const [language, setLanguage] = useState<AppLanguage>(() => {
+    try {
+      const saved = localStorage.getItem(LANGUAGE_STORAGE_KEY);
+      if (saved === 'id' || saved === 'en' || saved === 'bilingual') {
+        return saved;
+      }
+      return 'bilingual';
+    } catch {
+      return 'bilingual';
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(LANGUAGE_STORAGE_KEY, language);
+    } catch {}
+  }, [language]);
 
   useEffect(() => {
     const rootEl = document.documentElement;
@@ -823,10 +844,43 @@ export default function App() {
               <Ticket className="w-3.5 h-3.5" />
               <span>$50 Draw</span>
             </button>
+            <button
+              type="button"
+              onClick={() => setActiveSection('learnlink')}
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 whitespace-nowrap shrink-0 cursor-pointer transition-colors ${
+                activeSection === 'learnlink'
+                  ? 'bg-sky-500 text-slate-950 font-bold'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <GraduationCap className="w-3.5 h-3.5" />
+              <span>LearnLink</span>
+            </button>
           </nav>
 
-          {/* Right: Essential Light/Dark Icon & Cloud Sign-In */}
+          {/* Right: Language Toggle (ID+EN / ID / EN), Light/Dark Icon & Cloud Sign-In */}
           <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              type="button"
+              onClick={() =>
+                setLanguage((prev) =>
+                  prev === 'bilingual'
+                    ? 'id'
+                    : prev === 'id'
+                    ? 'en'
+                    : 'bilingual'
+                )
+              }
+              className="px-2 py-1 bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40 text-emerald-700 dark:text-emerald-300 text-[11px] font-extrabold rounded-lg transition-colors cursor-pointer"
+              title="Switch Language: Bilingual (Bahasa Indonesia + English) / Bahasa Indonesia / English"
+            >
+              {language === 'bilingual'
+                ? '🇮🇩+🇬🇧'
+                : language === 'id'
+                ? '🇮🇩 ID'
+                : '🇬🇧 EN'}
+            </button>
+
             <button
               type="button"
               onClick={() => setIsLightMode((prev) => !prev)}
@@ -854,8 +908,8 @@ export default function App() {
           </div>
         </header>
 
-        {/* Secondary Economy Bar ONLY shown on non-game tabs (Ranks, Vault, $50 Draw) so the Game Screen stays 100% clutter-free */}
-        {activeSection !== 'arena' && (
+        {/* Secondary Economy Bar ONLY shown on Ranks, Vault, $50 Draw so Game Screen & LearnLink Promo stay 100% clutter-free */}
+        {activeSection !== 'arena' && activeSection !== 'learnlink' && (
           <div className="bg-white/80 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-800/70 px-4 sm:px-8 py-2">
             <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
               <div className="flex flex-wrap items-center gap-2 text-xs text-slate-700 dark:text-slate-300 font-mono">
@@ -924,6 +978,8 @@ export default function App() {
               mode={gameMode}
               onModeChange={setGameMode}
               isLightMode={isLightMode}
+              language={language}
+              onLanguageChange={setLanguage}
               isAdminUser={Boolean(isAdminUser)}
               credits={profile.credits}
               highScore={profile.highScore}
@@ -979,7 +1035,55 @@ export default function App() {
               pushStatusText={pushStatusText}
             />
           )}
+
+          {activeSection === 'learnlink' && (
+            <LearnLinkPromoPage
+              language={language}
+              onReturnToGame={() => setActiveSection('arena')}
+            />
+          )}
         </main>
+
+        {/* Quiet Copyright Footer — LearnLink Educational Learning System */}
+        <footer
+          className={`border-t border-slate-200 dark:border-slate-800/80 bg-white/80 dark:bg-[#0b0f17]/90 ${
+            activeSection === 'arena' ? 'py-2 px-3 sm:px-6' : 'py-3 px-4 sm:px-8'
+          }`}
+        >
+          <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2 text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
+            <span>
+              &copy; {new Date().getFullYear()} LearnLink Educational Learning
+              System.{' '}
+              {language === 'id'
+                ? 'Hak Cipta Dilindungi.'
+                : 'All rights reserved.'}
+            </span>
+
+            <div className="flex items-center gap-3">
+              {activeSection !== 'learnlink' ? (
+                <button
+                  type="button"
+                  onClick={() => setActiveSection('learnlink')}
+                  className="font-medium text-sky-600 dark:text-sky-400 hover:underline underline-offset-4 whitespace-nowrap shrink-0 cursor-pointer"
+                >
+                  {language === 'id'
+                    ? 'Video Promo & Alat Belajar LearnLink'
+                    : language === 'en'
+                    ? 'LearnLink Promo & Other Tools'
+                    : 'LearnLink Promo & Tools · Alat Belajar'}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setActiveSection('arena')}
+                  className="font-medium text-sky-600 dark:text-sky-400 hover:underline underline-offset-4 whitespace-nowrap shrink-0 cursor-pointer"
+                >
+                  {language === 'id' ? 'Kembali ke Permainan' : 'Back to Game'}
+                </button>
+              )}
+            </div>
+          </div>
+        </footer>
 
         {/* Win-Wall $0.99 PayPal Credit Top-Up Gateway Modal */}
         <PayPalModal
