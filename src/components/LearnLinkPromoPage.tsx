@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { AppLanguage } from '../types/game';
+import { UsbOfflineSaveCard } from './OfflineControls';
 import {
   ArrowLeft,
   ExternalLink,
@@ -282,23 +283,23 @@ export const LearnLinkPromoPage: React.FC<LearnLinkPromoPageProps> = ({
   return (
     <div className="max-w-5xl mx-auto py-4 sm:py-6 space-y-10">
       {/* Clean Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-6 border-b border-slate-200 dark:border-slate-800">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-6 border-b border-[#C5E4EC] dark:border-[#1E447D]">
         <div className="space-y-2 max-w-2xl">
-          <div className="text-xs font-medium text-sky-600 dark:text-sky-400">
+          <div className="text-xs font-semibold text-[#0D949E] dark:text-[#2DD4BF]">
             {language === 'id'
               ? 'Ekosistem Pendidikan LearnLink · Alat Belajar Lainnya'
               : language === 'en'
               ? 'LearnLink Educational Learning System · Companion Tools'
               : 'LearnLink Educational Learning System · Ekosistem Alat Belajar'}
           </div>
-          <h1 className="text-2xl sm:text-4xl font-extrabold font-display tracking-tight text-slate-900 dark:text-white text-balance">
+          <h1 className="text-2xl sm:text-4xl font-extrabold font-display tracking-tight text-[#0B2249] dark:text-white text-balance">
             {language === 'id'
               ? 'Jelajahi Alat Belajar LearnLink Lainnya'
               : language === 'en'
               ? 'Explore Our LearnLink Learning Tools'
               : 'Explore Our LearnLink Learning Tools'}
           </h1>
-          <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed">
+          <p className="text-sm sm:text-base text-[#466284] dark:text-[#B8D4EE] leading-relaxed">
             {language === 'id'
               ? 'Tonton video promo resmi LearnLink dan temukan aplikasi belajar Bahasa Inggris, bahan ajar visual dwibahasa, serta alat jadwal harian anak yang dirancang untuk ruang kelas dan rumah.'
               : language === 'en'
@@ -310,7 +311,7 @@ export const LearnLinkPromoPage: React.FC<LearnLinkPromoPageProps> = ({
         <button
           type="button"
           onClick={onReturnToGame}
-          className="px-4 py-2.5 bg-slate-900 dark:bg-sky-500 hover:bg-slate-800 dark:hover:bg-sky-400 text-white dark:text-slate-950 font-semibold text-xs sm:text-sm rounded-lg transition-colors inline-flex items-center gap-2 whitespace-nowrap shrink-0 self-start sm:self-end cursor-pointer"
+          className="px-4 py-2.5 bg-[#0B2249] dark:bg-[#14B8C4] hover:bg-[#12336B] dark:hover:bg-[#2DD4BF] text-white dark:text-[#062134] font-semibold text-xs sm:text-sm rounded-lg transition-colors inline-flex items-center gap-2 whitespace-nowrap shrink-0 self-start sm:self-end cursor-pointer"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>
@@ -326,8 +327,8 @@ export const LearnLinkPromoPage: React.FC<LearnLinkPromoPageProps> = ({
       {/* Focal Anchor: Official LearnLink Promo Video Theater */}
       <section className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-white">
-            <Film className="w-4 h-4 text-sky-500" />
+          <div className="flex items-center gap-2 text-sm font-semibold text-[#0B2249] dark:text-white">
+            <Film className="w-4 h-4 text-[#14B8C4]" />
             <span>
               {language === 'id'
                 ? activeVideo.titleId
@@ -338,7 +339,7 @@ export const LearnLinkPromoPage: React.FC<LearnLinkPromoPageProps> = ({
           </div>
 
           {/* Segmented Video Reel Selector */}
-          <div className="flex items-center gap-1 p-1 bg-slate-200/80 dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800">
+          <div className="flex items-center gap-1 p-1 bg-[#E8F5F8] dark:bg-[#0D244B] rounded-lg border border-[#C5E4EC] dark:border-[#1E447D]">
             {PROMO_VIDEOS.map((vid, idx) => (
               <button
                 key={vid.id}
@@ -346,8 +347,8 @@ export const LearnLinkPromoPage: React.FC<LearnLinkPromoPageProps> = ({
                 onClick={() => setActiveVideoIdx(idx)}
                 className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
                   activeVideoIdx === idx
-                    ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    ? 'bg-[#0B2249] dark:bg-[#14B8C4] text-white dark:text-[#062134] shadow-sm'
+                    : 'text-[#466284] dark:text-[#A9C8E8] hover:text-[#0B2249] dark:hover:text-white'
                 }`}
               >
                 {language === 'id' ? `Video Promo ${idx + 1}` : `Promo Video ${idx + 1}`}
@@ -357,7 +358,7 @@ export const LearnLinkPromoPage: React.FC<LearnLinkPromoPageProps> = ({
         </div>
 
         {/* Clean Single-Elevation Video Container */}
-        <div className="rounded-xl overflow-hidden bg-slate-950 border border-slate-200 dark:border-slate-800 shadow-sm">
+        <div className="rounded-xl overflow-hidden bg-[#071731] border-2 border-[#0B2249] dark:border-[#14B8C4]/50 shadow-sm">
           <video
             key={activeVideo.src}
             src={activeVideo.src}
@@ -371,7 +372,7 @@ export const LearnLinkPromoPage: React.FC<LearnLinkPromoPageProps> = ({
           </video>
         </div>
 
-        <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 max-w-3xl">
+        <p className="text-xs sm:text-sm text-[#466284] dark:text-[#A9C8E8] max-w-3xl">
           {language === 'id'
             ? activeVideo.captionId
             : language === 'en'
@@ -380,20 +381,23 @@ export const LearnLinkPromoPage: React.FC<LearnLinkPromoPageProps> = ({
         </p>
       </section>
 
-      {/* Clean Hairline Divider */}
-      <hr className="border-slate-200 dark:border-slate-800" />
+      {/* 100% Offline & USB Portable Classroom Save Section */}
+      <UsbOfflineSaveCard language={language} />
 
-      {/* 3 Curated LearnLink Companion Tools */}
+      {/* Clean Hairline Divider */}
+      <hr className="border-[#C5E4EC] dark:border-[#1E447D]" />
+
+      {/* 4 Curated LearnLink Companion Tools */}
       <section className="space-y-8">
         <div className="space-y-1">
-          <h2 className="text-xl sm:text-2xl font-extrabold font-display text-slate-900 dark:text-white">
+          <h2 className="text-xl sm:text-2xl font-extrabold font-display text-[#0B2249] dark:text-white">
             {language === 'id'
               ? 'Alat Belajar Lainnya dari LearnLink'
               : language === 'en'
               ? 'Our Other LearnLink Tools'
               : 'Our Other LearnLink Tools · Alat Belajar LearnLink Lainnya'}
           </h2>
-          <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400">
+          <p className="text-xs sm:text-sm text-[#466284] dark:text-[#A9C8E8]">
             {language === 'id'
               ? 'Ketuk gambar mana saja untuk memperbesar, atau buka tautan alat belajar secara langsung.'
               : language === 'en'
@@ -411,7 +415,7 @@ export const LearnLinkPromoPage: React.FC<LearnLinkPromoPageProps> = ({
             return (
               <article
                 key={tool.id}
-                className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start pb-10 border-b border-slate-200/80 dark:border-slate-800/80 last:border-b-0 last:pb-0"
+                className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start pb-10 border-b border-[#C5E4EC] dark:border-[#1E447D] last:border-b-0 last:pb-0"
               >
                 {/* Media Preview Column */}
                 <div className="lg:col-span-6 space-y-3">
@@ -424,7 +428,7 @@ export const LearnLinkPromoPage: React.FC<LearnLinkPromoPageProps> = ({
                         toolName: tool.name,
                       })
                     }
-                    className="group relative block w-full rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 cursor-pointer focus-visible:outline-2 focus-visible:outline-sky-500"
+                    className="group relative block w-full rounded-xl overflow-hidden bg-white dark:bg-[#0D244B] border border-[#C5E4EC] dark:border-[#1E447D] cursor-pointer focus-visible:outline-2 focus-visible:outline-[#14B8C4]"
                     title="Enlarge preview"
                   >
                     <img
@@ -433,12 +437,12 @@ export const LearnLinkPromoPage: React.FC<LearnLinkPromoPageProps> = ({
                       referrerPolicy="no-referrer"
                       className={`w-full transition-transform duration-300 group-hover:scale-[1.01] ${
                         activeImg.aspect === 'portrait'
-                          ? 'max-h-[420px] object-contain bg-slate-950/90'
+                          ? 'max-h-[420px] object-contain bg-[#0B2249]'
                           : 'aspect-[16/10] object-cover object-top'
                       }`}
                     />
-                    <span className="absolute bottom-2.5 right-2.5 px-2.5 py-1 bg-slate-950/80 text-white text-[11px] font-medium rounded-md inline-flex items-center gap-1 opacity-90 group-hover:opacity-100 transition-opacity">
-                      <Maximize2 className="w-3 h-3" />
+                    <span className="absolute bottom-2.5 right-2.5 px-2.5 py-1 bg-[#0B2249]/90 text-white text-[11px] font-medium rounded-md inline-flex items-center gap-1 opacity-90 group-hover:opacity-100 transition-opacity">
+                      <Maximize2 className="w-3 h-3 text-[#2DD4BF]" />
                       <span>
                         {language === 'id' ? 'Perbesar' : 'Enlarge'}
                       </span>
@@ -458,10 +462,10 @@ export const LearnLinkPromoPage: React.FC<LearnLinkPromoPageProps> = ({
                               [tool.id]: idx,
                             }))
                           }
-                          className={`px-2.5 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
+                          className={`px-2.5 py-1.5 text-xs font-semibold rounded-md transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
                             currentImgIdx === idx
-                              ? 'bg-sky-500 text-slate-950 font-semibold'
-                              : 'bg-slate-200/70 dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-300/70 dark:hover:bg-slate-800'
+                              ? 'bg-[#14B8C4] text-[#062134]'
+                              : 'bg-[#E8F5F8] dark:bg-[#0D244B] text-[#0B2249] dark:text-[#CBE7F0] border border-[#C5E4EC] dark:border-[#1E447D] hover:bg-[#D5EEF4] dark:hover:bg-[#122E5E]'
                           }`}
                         >
                           {language === 'id' ? img.labelId : img.labelEn}
@@ -474,18 +478,18 @@ export const LearnLinkPromoPage: React.FC<LearnLinkPromoPageProps> = ({
                 {/* Editorial Details Column */}
                 <div className="lg:col-span-6 space-y-4">
                   <div className="space-y-1.5">
-                    <div className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                    <div className="text-xs font-semibold text-[#0D949E] dark:text-[#2DD4BF]">
                       {language === 'id' ? tool.kickerId : tool.kickerEn}
                     </div>
-                    <h3 className="text-xl sm:text-2xl font-extrabold font-display text-slate-900 dark:text-white">
+                    <h3 className="text-xl sm:text-2xl font-extrabold font-display text-[#0B2249] dark:text-white">
                       {tool.name}
                     </h3>
-                    <div className="text-xs font-mono text-sky-600 dark:text-sky-400">
+                    <div className="text-xs font-mono text-[#0D949E] dark:text-[#2DD4BF]">
                       {tool.displayUrl}
                     </div>
                   </div>
 
-                  <div className="space-y-2 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                  <div className="space-y-2 text-sm text-[#355275] dark:text-[#CBE7F0] leading-relaxed">
                     {(language === 'en' || language === 'bilingual') && (
                       <p>{tool.summaryEn}</p>
                     )}
@@ -493,7 +497,7 @@ export const LearnLinkPromoPage: React.FC<LearnLinkPromoPageProps> = ({
                       <p
                         className={
                           language === 'bilingual'
-                            ? 'text-slate-500 dark:text-slate-400 text-xs sm:text-sm'
+                            ? 'text-[#557293] dark:text-[#9FC0E2] text-xs sm:text-sm'
                             : ''
                         }
                       >
@@ -503,7 +507,7 @@ export const LearnLinkPromoPage: React.FC<LearnLinkPromoPageProps> = ({
                   </div>
 
                   {/* Clean Unboxed Feature List */}
-                  <ul className="space-y-1.5 text-xs sm:text-sm text-slate-700 dark:text-slate-300">
+                  <ul className="space-y-1.5 text-xs sm:text-sm text-[#0B2249] dark:text-[#E2F2F8]">
                     {(language === 'id'
                       ? tool.highlightsId
                       : tool.highlightsEn
@@ -511,7 +515,7 @@ export const LearnLinkPromoPage: React.FC<LearnLinkPromoPageProps> = ({
                       <li key={item} className="flex items-start gap-2">
                         <span
                           aria-hidden="true"
-                          className="text-sky-500 font-bold mt-0.5"
+                          className="text-[#14B8C4] font-bold mt-0.5"
                         >
                           ·
                         </span>
@@ -526,7 +530,7 @@ export const LearnLinkPromoPage: React.FC<LearnLinkPromoPageProps> = ({
                       href={tool.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="px-4 py-2 bg-sky-500 hover:bg-sky-400 text-slate-950 font-semibold text-xs sm:text-sm rounded-lg transition-colors inline-flex items-center gap-2 whitespace-nowrap shrink-0"
+                      className="px-4 py-2 bg-[#0B2249] dark:bg-[#14B8C4] hover:bg-[#12336B] dark:hover:bg-[#2DD4BF] text-white dark:text-[#062134] font-semibold text-xs sm:text-sm rounded-lg transition-colors inline-flex items-center gap-2 whitespace-nowrap shrink-0"
                     >
                       <span>
                         {language === 'id'
@@ -541,7 +545,7 @@ export const LearnLinkPromoPage: React.FC<LearnLinkPromoPageProps> = ({
                     <button
                       type="button"
                       onClick={() => handleCopyUrl(tool.id, tool.url)}
-                      className="px-3.5 py-2 bg-slate-200/80 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-medium text-xs sm:text-sm rounded-lg transition-colors inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer"
+                      className="px-3.5 py-2 bg-[#E8F5F8] dark:bg-[#122E5E] hover:bg-[#D5EEF4] dark:hover:bg-[#1A3E7A] text-[#0B2249] dark:text-white border border-[#C5E4EC] dark:border-[#1E447D] font-medium text-xs sm:text-sm rounded-lg transition-colors inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer"
                     >
                       {isCopied ? (
                         <>
@@ -552,7 +556,7 @@ export const LearnLinkPromoPage: React.FC<LearnLinkPromoPageProps> = ({
                         </>
                       ) : (
                         <>
-                          <Copy className="w-3.5 h-3.5" />
+                          <Copy className="w-3.5 h-3.5 text-[#0D949E] dark:text-[#2DD4BF]" />
                           <span>
                             {language === 'id' ? 'Salin Tautan' : 'Copy Link'}
                           </span>
@@ -570,17 +574,17 @@ export const LearnLinkPromoPage: React.FC<LearnLinkPromoPageProps> = ({
       {/* Clean Full-Size Screenshot Lightbox */}
       {lightbox && (
         <div
-          className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-sm flex items-center justify-center p-4"
+          className="fixed inset-0 z-50 bg-[#071731]/90 backdrop-blur-sm flex items-center justify-center p-4"
           onClick={() => setLightbox(null)}
         >
           <div
-            className="relative max-w-5xl w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-2xl"
+            className="relative max-w-5xl w-full bg-white dark:bg-[#0D244B] border border-[#C5E4EC] dark:border-[#1E447D] rounded-xl overflow-hidden shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between gap-4 px-4 py-3 border-b border-slate-200 dark:border-slate-800">
-              <div className="text-sm font-semibold text-slate-900 dark:text-white truncate">
+            <div className="flex items-center justify-between gap-4 px-4 py-3 border-b border-[#C5E4EC] dark:border-[#1E447D] bg-[#0B2249] text-white">
+              <div className="text-sm font-semibold truncate">
                 {lightbox.toolName} ·{' '}
-                <span className="text-slate-500 dark:text-slate-400 font-normal">
+                <span className="text-[#2DD4BF] font-normal">
                   {language === 'id'
                     ? lightbox.images[lightbox.index].labelId
                     : lightbox.images[lightbox.index].labelEn}
@@ -589,14 +593,14 @@ export const LearnLinkPromoPage: React.FC<LearnLinkPromoPageProps> = ({
               <button
                 type="button"
                 onClick={() => setLightbox(null)}
-                className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer"
+                className="p-1.5 rounded-lg bg-white/15 text-white hover:bg-white/25 cursor-pointer"
                 aria-label="Close preview"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="relative bg-slate-950 flex items-center justify-center">
+            <div className="relative bg-[#071731] flex items-center justify-center">
               <img
                 src={lightbox.images[lightbox.index].src}
                 alt={lightbox.images[lightbox.index].labelEn}

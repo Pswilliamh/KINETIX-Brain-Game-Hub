@@ -37,6 +37,8 @@ import { LeaderboardSection } from './components/LeaderboardSection';
 import { RewardsVaultSection } from './components/RewardsVaultSection';
 import { MonthlyDrawSection } from './components/MonthlyDrawSection';
 import { LearnLinkPromoPage } from './components/LearnLinkPromoPage';
+import { OfflineIndicator } from './components/OfflineControls';
+import { triggerUsbOfflineDownload } from './utils/usbOfflineExporter';
 import { PayPalModal } from './components/PayPalModal';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import {
@@ -50,12 +52,13 @@ import {
   Moon,
   Trash2,
   GraduationCap,
+  HardDriveDownload,
 } from 'lucide-react';
 
 type ActiveSection = 'arena' | 'leaderboard' | 'vault' | 'giveaway' | 'learnlink';
 
 const LOCAL_STORAGE_KEY = 'kinetix_arcade_player_v1';
-const THEME_STORAGE_KEY = 'kinetix_theme_choice_v1';
+const THEME_STORAGE_KEY = 'learnlink_theme_choice_v2';
 const LANGUAGE_STORAGE_KEY = 'kinetix_language_choice_v1';
 
 function loadLocalProfile(): PlayerProfileData {
@@ -116,12 +119,14 @@ export default function App() {
     loadLocalProfile()
   );
 
-  // Light / Dark Screen Choice (defaults to dark, user can switch to light screen anytime)
+  // LearnLink Navy Blue, Turquoise & White Theme (defaults to crisp White + Navy + Turquoise; toggle for Deep Navy Dark)
   const [isLightMode, setIsLightMode] = useState<boolean>(() => {
     try {
-      return localStorage.getItem(THEME_STORAGE_KEY) === 'light';
+      const saved = localStorage.getItem(THEME_STORAGE_KEY);
+      if (saved === 'dark') return false;
+      return true;
     } catch {
-      return false;
+      return true;
     }
   });
 
@@ -779,9 +784,9 @@ export default function App() {
 
   return (
     <ErrorBoundary>
-      <div className="min-h-screen bg-slate-100 dark:bg-[#0b0f17] text-slate-900 dark:text-slate-100 flex flex-col transition-colors duration-200">
-        {/* Single Ultra-Compact Top Bar (No multi-row clutter above the game!) */}
-        <header className="flex items-center justify-between gap-2 px-3 sm:px-6 py-2 border-b border-slate-200 dark:border-slate-800/80 bg-white/95 dark:bg-[#0b0f17]/95 sticky top-0 z-30 backdrop-blur-md">
+      <div className="min-h-screen bg-[#F2F9FB] dark:bg-[#071731] text-[#0B2249] dark:text-white flex flex-col transition-colors duration-200">
+        {/* LearnLink Signature Navy Blue + Turquoise + Crisp White Top Bar */}
+        <header className="flex items-center justify-between gap-2 px-3 sm:px-6 py-2 border-b-2 border-[#14B8C4] bg-[#0B2249] text-white sticky top-0 z-30 shadow-sm">
           {/* Left: Wordmark */}
           <a
             href="#arena"
@@ -789,20 +794,21 @@ export default function App() {
               e.preventDefault();
               setActiveSection('arena');
             }}
-            className="text-sm sm:text-base font-extrabold font-display tracking-tight text-slate-900 dark:text-white whitespace-nowrap shrink-0"
+            className="text-sm sm:text-base font-extrabold font-display tracking-tight text-white whitespace-nowrap shrink-0 flex items-center gap-1.5"
           >
-            KINETIX
+            <span className="w-2.5 h-2.5 rounded-xs bg-[#14B8C4] inline-block" aria-hidden="true" />
+            <span>KINETIX</span>
           </a>
 
-          {/* Center: Compact 4-Section Switcher (Works on both Mobile & Desktop in 1 slim row) */}
+          {/* Center: Compact 5-Section Switcher */}
           <nav className="flex items-center gap-1 overflow-x-auto">
             <button
               type="button"
               onClick={() => setActiveSection('arena')}
               className={`px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1 whitespace-nowrap shrink-0 cursor-pointer transition-colors ${
                 activeSection === 'arena'
-                  ? 'bg-sky-500 text-slate-950'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  ? 'bg-[#14B8C4] text-[#062134]'
+                  : 'text-[#CBE7F0] hover:text-white hover:bg-white/10'
               }`}
             >
               <Gamepad2 className="w-3.5 h-3.5" />
@@ -813,8 +819,8 @@ export default function App() {
               onClick={() => setActiveSection('leaderboard')}
               className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 whitespace-nowrap shrink-0 cursor-pointer transition-colors ${
                 activeSection === 'leaderboard'
-                  ? 'bg-sky-500 text-slate-950 font-bold'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  ? 'bg-[#14B8C4] text-[#062134] font-bold'
+                  : 'text-[#CBE7F0] hover:text-white hover:bg-white/10'
               }`}
             >
               <Trophy className="w-3.5 h-3.5" />
@@ -825,8 +831,8 @@ export default function App() {
               onClick={() => setActiveSection('vault')}
               className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 whitespace-nowrap shrink-0 cursor-pointer transition-colors ${
                 activeSection === 'vault'
-                  ? 'bg-sky-500 text-slate-950 font-bold'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  ? 'bg-[#14B8C4] text-[#062134] font-bold'
+                  : 'text-[#CBE7F0] hover:text-white hover:bg-white/10'
               }`}
             >
               <Download className="w-3.5 h-3.5" />
@@ -837,8 +843,8 @@ export default function App() {
               onClick={() => setActiveSection('giveaway')}
               className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 whitespace-nowrap shrink-0 cursor-pointer transition-colors ${
                 activeSection === 'giveaway'
-                  ? 'bg-sky-500 text-slate-950 font-bold'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  ? 'bg-[#14B8C4] text-[#062134] font-bold'
+                  : 'text-[#CBE7F0] hover:text-white hover:bg-white/10'
               }`}
             >
               <Ticket className="w-3.5 h-3.5" />
@@ -849,8 +855,8 @@ export default function App() {
               onClick={() => setActiveSection('learnlink')}
               className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 whitespace-nowrap shrink-0 cursor-pointer transition-colors ${
                 activeSection === 'learnlink'
-                  ? 'bg-sky-500 text-slate-950 font-bold'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  ? 'bg-[#14B8C4] text-[#062134] font-bold'
+                  : 'text-[#CBE7F0] hover:text-white hover:bg-white/10'
               }`}
             >
               <GraduationCap className="w-3.5 h-3.5" />
@@ -858,7 +864,7 @@ export default function App() {
             </button>
           </nav>
 
-          {/* Right: Language Toggle (ID+EN / ID / EN), Light/Dark Icon & Cloud Sign-In */}
+          {/* Right: Language Toggle (ID+EN / ID / EN), Light/Dark Navy Toggle & Cloud Sign-In */}
           <div className="flex items-center gap-1.5 shrink-0">
             <button
               type="button"
@@ -871,7 +877,7 @@ export default function App() {
                     : 'bilingual'
                 )
               }
-              className="px-2 py-1 bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40 text-emerald-700 dark:text-emerald-300 text-[11px] font-extrabold rounded-lg transition-colors cursor-pointer"
+              className="px-2 py-1 bg-[#14B8C4]/20 hover:bg-[#14B8C4]/35 border border-[#14B8C4]/50 text-[#CCF5F8] text-[11px] font-extrabold rounded-lg transition-colors cursor-pointer"
               title="Switch Language: Bilingual (Bahasa Indonesia + English) / Bahasa Indonesia / English"
             >
               {language === 'bilingual'
@@ -884,20 +890,24 @@ export default function App() {
             <button
               type="button"
               onClick={() => setIsLightMode((prev) => !prev)}
-              className="p-1.5 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-lg transition-colors cursor-pointer"
-              title={isLightMode ? 'Switch to Dark Screen' : 'Switch to Light Screen'}
+              className="p-1.5 bg-white/12 hover:bg-white/20 text-white rounded-lg transition-colors cursor-pointer"
+              title={
+                isLightMode
+                  ? 'Switch to Deep Navy Dark Screen'
+                  : 'Switch to Crisp White Light Screen'
+              }
             >
               {isLightMode ? (
-                <Moon className="w-3.5 h-3.5 text-slate-700" />
+                <Moon className="w-3.5 h-3.5 text-[#2DD4BF]" />
               ) : (
-                <Sun className="w-3.5 h-3.5 text-amber-400" />
+                <Sun className="w-3.5 h-3.5 text-[#2DD4BF]" />
               )}
             </button>
 
             <button
               type="button"
               onClick={handleCloudAuthToggle}
-              className="px-2.5 py-1 text-[11px] font-bold text-slate-950 bg-sky-400 hover:bg-sky-300 rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+              className="px-2.5 py-1 text-[11px] font-bold text-[#062134] bg-[#2DD4BF] hover:bg-[#5EEAD4] rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer"
             >
               {!authReady
                 ? '...'
@@ -910,10 +920,10 @@ export default function App() {
 
         {/* Secondary Economy Bar ONLY shown on Ranks, Vault, $50 Draw so Game Screen & LearnLink Promo stay 100% clutter-free */}
         {activeSection !== 'arena' && activeSection !== 'learnlink' && (
-          <div className="bg-white/80 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-800/70 px-4 sm:px-8 py-2">
+          <div className="bg-white dark:bg-[#0D244B] border-b border-[#C5E4EC] dark:border-[#1E447D] px-4 sm:px-8 py-2">
             <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
-              <div className="flex flex-wrap items-center gap-2 text-xs text-slate-700 dark:text-slate-300 font-mono">
-                <span className="text-amber-600 dark:text-amber-400 font-bold">
+              <div className="flex flex-wrap items-center gap-2 text-xs text-[#0B2249] dark:text-[#CBE7F0] font-mono">
+                <span className="text-[#0D949E] dark:text-[#2DD4BF] font-bold">
                   {profile.credits.toLocaleString()} Credits
                 </span>
                 <span aria-hidden="true">·</span>
@@ -930,7 +940,7 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => setIsPayPalOpen(true)}
-                  className="px-2.5 py-1 bg-[#ffc439] hover:bg-[#f4b828] text-slate-950 font-bold text-xs rounded-md transition-colors flex items-center gap-1 whitespace-nowrap shrink-0 cursor-pointer"
+                  className="px-2.5 py-1 bg-[#14B8C4] hover:bg-[#0EA5B7] text-[#062134] font-bold text-xs rounded-md transition-colors flex items-center gap-1 whitespace-nowrap shrink-0 cursor-pointer"
                 >
                   <CreditCard className="w-3.5 h-3.5" />
                   <span>$0.99 PayPal (+250K CR)</span>
@@ -939,9 +949,9 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => handleShareScore()}
-                  className="px-2.5 py-1 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-medium text-xs rounded-md transition-colors flex items-center gap-1 whitespace-nowrap shrink-0 cursor-pointer"
+                  className="px-2.5 py-1 bg-[#E8F5F8] dark:bg-[#122E5E] hover:bg-[#D5EEF4] dark:hover:bg-[#1A3E7A] text-[#0B2249] dark:text-white font-medium text-xs rounded-md transition-colors flex items-center gap-1 whitespace-nowrap shrink-0 cursor-pointer"
                 >
-                  <Share2 className="w-3.5 h-3.5 text-sky-500" />
+                  <Share2 className="w-3.5 h-3.5 text-[#0D949E] dark:text-[#2DD4BF]" />
                   <span>Invite (+5K CR)</span>
                 </button>
 
@@ -960,7 +970,7 @@ export default function App() {
 
         {/* Transient Notification Toast */}
         {statusBanner && (
-          <div className="bg-sky-500/15 border-b border-sky-500/30 px-3 py-1.5 text-center text-xs text-sky-700 dark:text-sky-300 font-semibold">
+          <div className="bg-[#CCF5F8] dark:bg-[#12336B] border-b border-[#14B8C4] px-3 py-1.5 text-center text-xs text-[#0B2249] dark:text-[#CCF5F8] font-semibold">
             {statusBanner}
           </div>
         )}
@@ -1044,14 +1054,14 @@ export default function App() {
           )}
         </main>
 
-        {/* Quiet Copyright Footer — LearnLink Educational Learning System */}
+        {/* LearnLink Signature Navy Blue + Turquoise + Crisp White Copyright Footer */}
         <footer
-          className={`border-t border-slate-200 dark:border-slate-800/80 bg-white/80 dark:bg-[#0b0f17]/90 ${
+          className={`border-t-2 border-[#14B8C4] bg-[#0B2249] text-[#CBE7F0] ${
             activeSection === 'arena' ? 'py-2 px-3 sm:px-6' : 'py-3 px-4 sm:px-8'
           }`}
         >
-          <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2 text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
-            <span>
+          <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2 text-[11px] sm:text-xs">
+            <span className="text-white/90 font-medium">
               &copy; {new Date().getFullYear()} LearnLink Educational Learning
               System.{' '}
               {language === 'id'
@@ -1059,24 +1069,47 @@ export default function App() {
                 : 'All rights reserved.'}
             </span>
 
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  triggerUsbOfflineDownload();
+                  showTemporaryNotice(
+                    language === 'id'
+                      ? 'File USB Offline (LearnLink-Brain-Workout-Offline-USB.html) berhasil diunduh! Salin ke USB untuk main tanpa internet.'
+                      : 'Downloaded LearnLink-Brain-Workout-Offline-USB.html! Copy it to a USB flash drive to play all 37 games 100% offline.'
+                  );
+                }}
+                className="font-semibold text-[#2DD4BF] hover:text-white inline-flex items-center gap-1 whitespace-nowrap shrink-0 cursor-pointer transition-colors"
+                title="Download 100% Offline Single-File Game for USB Drive"
+              >
+                <HardDriveDownload className="w-3.5 h-3.5" />
+                <span>
+                  {language === 'id' ? 'Simpan ke USB' : 'Save to USB'}
+                </span>
+              </button>
+
+              <span aria-hidden="true" className="text-white/30">
+                ·
+              </span>
+
               {activeSection !== 'learnlink' ? (
                 <button
                   type="button"
                   onClick={() => setActiveSection('learnlink')}
-                  className="font-medium text-sky-600 dark:text-sky-400 hover:underline underline-offset-4 whitespace-nowrap shrink-0 cursor-pointer"
+                  className="font-semibold text-white hover:text-[#2DD4BF] underline-offset-4 hover:underline whitespace-nowrap shrink-0 cursor-pointer transition-colors"
                 >
                   {language === 'id'
-                    ? 'Video Promo & Alat Belajar LearnLink'
+                    ? 'Promo & Alat Belajar LearnLink'
                     : language === 'en'
-                    ? 'LearnLink Promo & Other Tools'
-                    : 'LearnLink Promo & Tools · Alat Belajar'}
+                    ? 'LearnLink Promo & Tools'
+                    : 'LearnLink Promo & Tools'}
                 </button>
               ) : (
                 <button
                   type="button"
                   onClick={() => setActiveSection('arena')}
-                  className="font-medium text-sky-600 dark:text-sky-400 hover:underline underline-offset-4 whitespace-nowrap shrink-0 cursor-pointer"
+                  className="font-semibold text-white hover:text-[#2DD4BF] underline-offset-4 hover:underline whitespace-nowrap shrink-0 cursor-pointer transition-colors"
                 >
                   {language === 'id' ? 'Kembali ke Permainan' : 'Back to Game'}
                 </button>
@@ -1084,6 +1117,9 @@ export default function App() {
             </div>
           </div>
         </footer>
+
+        {/* Subtle Offline Connectivity Toast (only shown when network disconnects) */}
+        <OfflineIndicator language={language} />
 
         {/* Win-Wall $0.99 PayPal Credit Top-Up Gateway Modal */}
         <PayPalModal

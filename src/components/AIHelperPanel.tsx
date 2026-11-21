@@ -73,6 +73,19 @@ export const AIHelperPanel: React.FC<AIHelperPanelProps> = ({
       : targetPattern.bonusCredits;
 
     try {
+      if (!navigator.onLine) {
+        setAiReply({
+          headline: `Offline Spatial Coach: ${activeGoalName}`,
+          coachingAdvice: bestMove
+            ? `${bestMove.reasonSummary} (Running locally in 100% Offline Mode — zero internet needed!)`
+            : `Place pieces onto open cells to progress toward ${activeGoalName}.`,
+          patternTip: `Complete ${activeGoalName} for +${activeGoalCredits.toLocaleString()} credits.`,
+        });
+        if (!isShowingHintOnBoard) onToggleHintOnBoard();
+        setLoadingAI(false);
+        return;
+      }
+
       const response = await fetch('/api/ai-helper', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -115,30 +128,36 @@ export const AIHelperPanel: React.FC<AIHelperPanelProps> = ({
       if (!isShowingHintOnBoard) {
         onToggleHintOnBoard();
       }
-    } catch (err: unknown) {
-      setAiError(
-        err instanceof Error
-          ? err.message
-          : 'Could not reach Gemini AI Helper.'
-      );
+    } catch {
+      // Seamless local offline fallback so the helper always works without internet
+      setAiReply({
+        headline: `Local Offline Coach: ${activeGoalName}`,
+        coachingAdvice: bestMove
+          ? `${bestMove.reasonSummary} (Computed locally offline — tap Execute Move to play it right away.)`
+          : `Tap Rotate or try another tray slot to line up your next match for ${activeGoalName}.`,
+        patternTip: `Finish ${activeGoalName} to earn +${activeGoalCredits.toLocaleString()} credits.`,
+      });
+      if (!isShowingHintOnBoard) {
+        onToggleHintOnBoard();
+      }
     } finally {
       setLoadingAI(false);
     }
   };
 
   return (
-    <div className="max-w-3xl mx-auto bg-white dark:bg-slate-900/85 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 space-y-6 shadow-sm">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 dark:border-slate-800 pb-4">
+    <div className="max-w-3xl mx-auto bg-white dark:bg-[#0D244B] border border-[#C5E4EC] dark:border-[#1E447D] rounded-2xl p-6 space-y-6 shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#C5E4EC] dark:border-[#1E447D] pb-4">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-sky-500/15 border border-sky-500/30 rounded-xl text-sky-600 dark:text-sky-400">
+          <div className="p-2.5 bg-[#14B8C4]/15 border border-[#14B8C4]/40 rounded-xl text-[#0D949E] dark:text-[#2DD4BF]">
             <Bot className="w-5 h-5" />
           </div>
           <div>
-            <div className="text-xs text-sky-600 dark:text-sky-400 font-mono">
-              DEDICATED AI HELPER SCREEN
+            <div className="text-xs text-[#0D949E] dark:text-[#2DD4BF] font-mono font-semibold">
+              LEARNLINK SPATIAL HELPER (ONLINE &amp; OFFLINE)
             </div>
-            <h2 className="text-xl font-bold font-display text-slate-900 dark:text-white">
-              Gemini Live Spatial Coach & Move Solver
+            <h2 className="text-xl font-bold font-display text-[#0B2249] dark:text-white">
+              Spatial Coach &amp; Move Solver
             </h2>
           </div>
         </div>
@@ -149,8 +168,8 @@ export const AIHelperPanel: React.FC<AIHelperPanelProps> = ({
             onClick={onToggleHintOnBoard}
             className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
               isShowingHintOnBoard
-                ? 'bg-amber-500 text-slate-950 font-bold'
-                : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200'
+                ? 'bg-[#14B8C4] text-[#062134] font-bold'
+                : 'bg-[#E8F5F8] dark:bg-[#122E5E] hover:bg-[#D5EEF4] dark:hover:bg-[#1B4284] text-[#0B2249] dark:text-white'
             }`}
           >
             <Crosshair className="w-3.5 h-3.5" />
@@ -163,7 +182,7 @@ export const AIHelperPanel: React.FC<AIHelperPanelProps> = ({
             <button
               type="button"
               onClick={onReturnToArena}
-              className="px-3.5 py-2 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-semibold text-xs rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+              className="px-3.5 py-2 bg-[#0B2249] dark:bg-[#14B8C4] hover:bg-[#12336B] dark:hover:bg-[#2DD4BF] text-white dark:text-[#062134] font-semibold text-xs rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
             >
               <Gamepad2 className="w-3.5 h-3.5" />
               <span>Back to Game</span>
@@ -174,20 +193,20 @@ export const AIHelperPanel: React.FC<AIHelperPanelProps> = ({
 
       {/* Instant Live Recommendation Box */}
       {bestMove ? (
-        <div className="bg-slate-50 dark:bg-slate-950/90 border border-slate-200 dark:border-slate-800 rounded-xl p-5 space-y-3">
+        <div className="bg-[#F2F9FB] dark:bg-[#071731] border border-[#C5E4EC] dark:border-[#1E447D] rounded-xl p-5 space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-            <span className="text-emerald-600 dark:text-emerald-400 font-bold font-mono">
+            <span className="text-[#0D949E] dark:text-[#2DD4BF] font-bold font-mono">
               RECOMMENDED MOVE: SLOT #{bestMove.trayIndex + 1} (
               {bestMove.shapeName})
             </span>
-            <span className="font-mono text-slate-600 dark:text-slate-400">
+            <span className="font-mono text-[#466284] dark:text-[#A9C8E8]">
               Row {bestMove.row + 1}, Col {bestMove.col + 1}
               {bestMove.rotationsNeeded > 0
                 ? ` · Rotate ${bestMove.rotationsNeeded * 90}°`
                 : ''}
             </span>
           </div>
-          <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
+          <p className="text-sm text-[#0B2249] dark:text-[#CBE7F0] leading-relaxed">
             {bestMove.reasonSummary}
           </p>
 
@@ -198,10 +217,10 @@ export const AIHelperPanel: React.FC<AIHelperPanelProps> = ({
                 onExecuteBestMove();
                 if (onReturnToArena) onReturnToArena();
               }}
-              className="flex-1 py-2.5 px-4 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-xl transition-colors flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap"
+              className="flex-1 py-2.5 px-4 bg-[#14B8C4] hover:bg-[#0EA5B7] text-[#062134] font-bold text-xs rounded-xl transition-colors flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap"
             >
               <Play className="w-4 h-4 fill-current" />
-              <span>Execute Move & Return to Game</span>
+              <span>Execute Move &amp; Return to Game</span>
             </button>
 
             <button
@@ -212,24 +231,24 @@ export const AIHelperPanel: React.FC<AIHelperPanelProps> = ({
                 )
               }
               disabled={loadingAI}
-              className="py-2.5 px-4 bg-sky-500 hover:bg-sky-400 disabled:opacity-50 text-slate-950 font-bold text-xs rounded-xl transition-colors flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap"
+              className="py-2.5 px-4 bg-[#0B2249] dark:bg-[#2DD4BF] hover:bg-[#12336B] dark:hover:bg-[#5EEAD4] disabled:opacity-50 text-white dark:text-[#062134] font-bold text-xs rounded-xl transition-colors flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap"
             >
               {loadingAI ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
                 <Sparkles className="w-4 h-4" />
               )}
-              <span>Ask Gemini AI Coach</span>
+              <span>Get Coach Explanation</span>
             </button>
           </div>
         </div>
       ) : (
-        <div className="bg-slate-50 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 rounded-xl p-4 text-xs text-slate-500 dark:text-slate-400">
+        <div className="bg-[#F2F9FB] dark:bg-[#071731] border border-[#C5E4EC] dark:border-[#1E447D] rounded-xl p-4 text-xs text-[#466284] dark:text-[#A9C8E8]">
           No valid moves remaining for current tray pieces. Return to the Game Screen to Undo or Clear Points!
         </div>
       )}
 
-      {/* Custom Question Input for Gemini AI Helper */}
+      {/* Custom Question Input */}
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -241,13 +260,13 @@ export const AIHelperPanel: React.FC<AIHelperPanelProps> = ({
           type="text"
           value={userQuestion}
           onChange={(e) => setUserQuestion(e.target.value)}
-          placeholder="Ask AI Helper (e.g., How do I build Harmonic Cross?)"
-          className="flex-1 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 focus:border-sky-500 rounded-xl px-4 py-2.5 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none"
+          placeholder="Ask Helper (e.g., How do I finish this puzzle?)"
+          className="flex-1 bg-[#F2F9FB] dark:bg-[#071731] border border-[#C5E4EC] dark:border-[#1E447D] focus:border-[#14B8C4] rounded-xl px-4 py-2.5 text-xs text-[#0B2249] dark:text-white placeholder:text-[#6B86A6] focus:outline-none"
         />
         <button
           type="submit"
           disabled={loadingAI}
-          className="px-4 py-2.5 bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 dark:hover:bg-slate-700 disabled:opacity-50 text-white dark:text-sky-400 font-semibold text-xs rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer shrink-0"
+          className="px-4 py-2.5 bg-[#0B2249] dark:bg-[#14B8C4] hover:bg-[#12336B] dark:hover:bg-[#2DD4BF] disabled:opacity-50 text-white dark:text-[#062134] font-semibold text-xs rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer shrink-0"
         >
           {loadingAI ? (
             <Loader2 className="w-4 h-4 animate-spin" />
@@ -258,7 +277,6 @@ export const AIHelperPanel: React.FC<AIHelperPanelProps> = ({
         </button>
       </form>
 
-      {/* Gemini AI Coach Deep Response */}
       {aiError && (
         <div className="p-4 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800/70 rounded-xl flex items-start gap-2.5 text-xs text-rose-700 dark:text-rose-200">
           <AlertCircle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
@@ -267,15 +285,15 @@ export const AIHelperPanel: React.FC<AIHelperPanelProps> = ({
       )}
 
       {aiReply && (
-        <div className="p-5 bg-sky-50 dark:bg-sky-950/30 border border-sky-200 dark:border-sky-500/30 rounded-xl space-y-2.5">
-          <div className="text-sm font-bold text-sky-800 dark:text-sky-300 flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-sky-500 shrink-0" />
+        <div className="p-5 bg-[#E8F5F8] dark:bg-[#122E5E] border border-[#14B8C4]/50 rounded-xl space-y-2.5">
+          <div className="text-sm font-bold text-[#0B2249] dark:text-[#2DD4BF] flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-[#14B8C4] shrink-0" />
             <span>{aiReply.headline}</span>
           </div>
-          <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-200 leading-relaxed">
+          <p className="text-xs sm:text-sm text-[#355275] dark:text-[#E2F2F8] leading-relaxed">
             {aiReply.coachingAdvice}
           </p>
-          <div className="pt-2 border-t border-sky-200 dark:border-sky-500/20 text-xs text-emerald-700 dark:text-emerald-300 font-semibold">
+          <div className="pt-2 border-t border-[#C5E4EC] dark:border-[#1E447D] text-xs text-[#0D949E] dark:text-[#2DD4BF] font-semibold">
             Pattern Tip: {aiReply.patternTip}
           </div>
         </div>

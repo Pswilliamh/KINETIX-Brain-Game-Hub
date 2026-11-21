@@ -2059,11 +2059,11 @@ export const ArcadeArena: React.FC<ArcadeArenaProps> = ({
               backgroundColor: palette.gridSurface,
               borderColor: palette.borderHairline,
             }}
-            className="border rounded-xl px-2.5 py-2 space-y-1.5"
+            className="border rounded-xl px-2.5 py-2 space-y-1.5 shadow-xs"
           >
             {/* Row 1: Mode Pills + Score & Credits */}
             <div className="flex items-center justify-between gap-1.5">
-              <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-950 p-0.5 rounded-lg border border-slate-200 dark:border-slate-800">
+              <div className="flex items-center gap-1 bg-[#E8F5F8] dark:bg-[#071731] p-0.5 rounded-lg border border-[#C5E4EC] dark:border-[#1E447D]">
                 <button
                   type="button"
                   onClick={() => {
@@ -2071,9 +2071,9 @@ export const ArcadeArena: React.FC<ArcadeArenaProps> = ({
                     loadMonumentPuzzle(monumentIdx, true);
                   }}
                   className={`px-2 py-1 text-[11px] font-bold rounded-md transition-colors cursor-pointer ${
-                    mode === 'puzzle'
-                      ? 'bg-violet-500 text-slate-950'
-                      : 'text-slate-600 dark:text-slate-400'
+                    mode === 'puzzle' && !isLetterScrambleGame
+                      ? 'bg-[#0B2249] dark:bg-[#14B8C4] text-white dark:text-[#062134]'
+                      : 'text-[#355275] dark:text-[#A9C8E8]'
                   }`}
                 >
                   Puzzle
@@ -2093,8 +2093,8 @@ export const ArcadeArena: React.FC<ArcadeArenaProps> = ({
                   }}
                   className={`px-2 py-1 text-[11px] font-bold rounded-md transition-colors cursor-pointer ${
                     isLetterScrambleGame
-                      ? 'bg-emerald-500 text-slate-950'
-                      : 'text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/15'
+                      ? 'bg-[#14B8C4] text-[#062134]'
+                      : 'text-[#0D949E] dark:text-[#2DD4BF] hover:bg-[#14B8C4]/15'
                   }`}
                   title="Jump directly to English Sentence & Word Scramble Games"
                 >
@@ -2108,8 +2108,8 @@ export const ArcadeArena: React.FC<ArcadeArenaProps> = ({
                   }}
                   className={`px-2 py-1 text-[11px] font-bold rounded-md transition-colors cursor-pointer ${
                     mode === 'arcade'
-                      ? 'bg-sky-500 text-slate-950'
-                      : 'text-slate-600 dark:text-slate-400'
+                      ? 'bg-[#0B2249] dark:bg-[#14B8C4] text-white dark:text-[#062134]'
+                      : 'text-[#355275] dark:text-[#A9C8E8]'
                   }`}
                 >
                   Arcade
@@ -2122,8 +2122,8 @@ export const ArcadeArena: React.FC<ArcadeArenaProps> = ({
                   }}
                   className={`px-2 py-1 text-[11px] font-bold rounded-md transition-colors cursor-pointer ${
                     mode === 'practice'
-                      ? 'bg-amber-500 text-slate-950'
-                      : 'text-slate-600 dark:text-slate-400'
+                      ? 'bg-[#0B2249] dark:bg-[#14B8C4] text-white dark:text-[#062134]'
+                      : 'text-[#355275] dark:text-[#A9C8E8]'
                   }`}
                 >
                   {language === 'id' ? 'Latihan' : 'Practice'}
@@ -2133,18 +2133,18 @@ export const ArcadeArena: React.FC<ArcadeArenaProps> = ({
               {/* Compact Score & Credits Readout */}
               <div className="flex items-center gap-2 font-mono text-right">
                 <div>
-                  <span className="text-[10px] text-slate-400 block leading-none">
+                  <span className="text-[10px] text-[#557293] dark:text-[#9FC0E2] block leading-none">
                     {language === 'id' ? 'SKOR' : 'SCORE'}
                   </span>
-                  <span className="text-sm font-extrabold text-slate-900 dark:text-white tabular-nums">
+                  <span className="text-sm font-extrabold text-[#0B2249] dark:text-white tabular-nums">
                     {score.toLocaleString()}
                   </span>
                 </div>
-                <div className="pl-2 border-l border-slate-200 dark:border-slate-800">
-                  <span className="text-[10px] text-amber-500 block leading-none">
+                <div className="pl-2 border-l border-[#C5E4EC] dark:border-[#1E447D]">
+                  <span className="text-[10px] text-[#0D949E] dark:text-[#2DD4BF] block leading-none">
                     {language === 'id' ? 'KOIN' : 'CREDITS'}
                   </span>
-                  <span className="text-xs font-bold text-amber-600 dark:text-amber-400 tabular-nums">
+                  <span className="text-xs font-bold text-[#0D949E] dark:text-[#2DD4BF] tabular-nums">
                     {credits.toLocaleString()}
                   </span>
                 </div>
@@ -2227,13 +2227,13 @@ export const ArcadeArena: React.FC<ArcadeArenaProps> = ({
                   <button
                     type="button"
                     onClick={() => loadMonumentPuzzle(monumentIdx + 1, true)}
-                    className="px-1.5 py-1 rounded-md bg-violet-500/15 hover:bg-violet-500/25 border border-violet-500/40 text-violet-700 dark:text-violet-300 text-[10px] font-extrabold whitespace-nowrap cursor-pointer shrink-0"
+                    className="px-1.5 py-1 rounded-md bg-[#14B8C4]/15 hover:bg-[#14B8C4]/25 border border-[#14B8C4]/50 text-[#0B2249] dark:text-[#2DD4BF] text-[10px] font-extrabold whitespace-nowrap cursor-pointer shrink-0"
                     title="Next Brain Workout Game"
                   >
                     🎲 {language === 'id' ? 'Lanjut' : 'Next'}
                   </button>
 
-                  <span className="text-[10px] font-mono font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap shrink-0">
+                  <span className="text-[10px] font-mono font-bold text-[#0D949E] dark:text-[#2DD4BF] whitespace-nowrap shrink-0">
                     {monumentProgress.percentage}%
                   </span>
                 </div>
@@ -2438,18 +2438,18 @@ export const ArcadeArena: React.FC<ArcadeArenaProps> = ({
                     const tileBg = !isLetterTile
                       ? palette.cellEmpty
                       : isSelectedForSwap
-                      ? '#38bdf8'
+                      ? '#14B8C4'
                       : isCorrectlySpelled
-                      ? '#10b981'
-                      : blueprintHex || '#f59e0b';
+                      ? '#10B981'
+                      : '#0F2E63';
 
                     const tileBorder = !isLetterTile
                       ? 'transparent'
                       : isSelectedForSwap
-                      ? '#ffffff'
+                      ? '#FFFFFF'
                       : isCorrectlySpelled
-                      ? '#34d399'
-                      : '#fde047';
+                      ? '#34D399'
+                      : '#14B8C4';
 
                     return (
                       <button
@@ -2463,9 +2463,9 @@ export const ArcadeArena: React.FC<ArcadeArenaProps> = ({
                         }}
                         className={`w-full h-full rounded-lg border-2 flex flex-col items-center justify-center relative transition-all duration-150 focus:outline-none ${
                           !isLetterTile
-                            ? 'opacity-30 cursor-default'
+                            ? 'opacity-40 cursor-default'
                             : isSelectedForSwap
-                            ? 'scale-110 z-10 shadow-lg cursor-pointer ring-2 ring-sky-300'
+                            ? 'scale-110 z-10 shadow-lg cursor-pointer ring-2 ring-[#0B2249] dark:ring-white'
                             : 'hover:scale-105 cursor-pointer shadow-xs'
                         }`}
                         aria-label={
@@ -2481,10 +2481,10 @@ export const ArcadeArena: React.FC<ArcadeArenaProps> = ({
                             <span
                               className={`text-sm sm:text-base font-mono font-black leading-none select-none ${
                                 isSelectedForSwap
-                                  ? 'text-slate-950'
+                                  ? 'text-[#062134]'
                                   : isCorrectlySpelled
-                                  ? 'text-slate-950'
-                                  : 'text-slate-950'
+                                  ? 'text-[#042F2E]'
+                                  : 'text-white'
                               }`}
                             >
                               {currentScrambledChar}
@@ -2492,11 +2492,11 @@ export const ArcadeArena: React.FC<ArcadeArenaProps> = ({
 
                             {/* Small checkmark when letter is in the right spot, or target letter hint when Peek/Kunci is ON */}
                             {isCorrectlySpelled ? (
-                              <span className="absolute top-0.5 right-0.5 text-[8px] font-black text-slate-950/80 leading-none">
+                              <span className="absolute top-0.5 right-0.5 text-[8px] font-black text-[#042F2E]/85 leading-none">
                                 ✓
                               </span>
                             ) : showBlueprintGuideOnBoard ? (
-                              <span className="absolute bottom-0.5 right-0.5 text-[8px] font-mono font-extrabold text-slate-950/85 bg-white/75 px-0.5 rounded leading-none">
+                              <span className="absolute bottom-0.5 right-0.5 text-[8px] font-mono font-extrabold text-[#0B2249] bg-[#CCF5F8] px-0.5 rounded leading-none">
                                 {targetLetter}
                               </span>
                             ) : null}
@@ -2937,7 +2937,7 @@ export const ArcadeArena: React.FC<ArcadeArenaProps> = ({
                 {/* Target English Sentence + Bahasa Indonesia Meaning + Speak Button */}
                 <div className="bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg p-2 space-y-1">
                   <div className="flex items-center justify-between gap-1.5">
-                    <span className="text-[10px] font-mono font-bold uppercase text-sky-600 dark:text-sky-400">
+                    <span className="text-[10px] font-mono font-bold uppercase text-[#0D949E] dark:text-[#2DD4BF]">
                       {swapSelectedCell
                         ? language === 'id'
                           ? `✨ Huruf "${
@@ -2961,7 +2961,7 @@ export const ArcadeArena: React.FC<ArcadeArenaProps> = ({
                           activeMonument.sentenceEn || activeMonument.name
                         )
                       }
-                      className="px-2 py-0.5 rounded bg-sky-500 hover:bg-sky-400 text-slate-950 text-[10px] font-extrabold flex items-center gap-1 shrink-0 cursor-pointer"
+                      className="px-2 py-0.5 rounded bg-[#14B8C4] hover:bg-[#0EA5B7] text-[#062134] text-[10px] font-extrabold flex items-center gap-1 shrink-0 cursor-pointer"
                       title="Listen to English Pronunciation"
                     >
                       <Volume2 className="w-3 h-3" />
@@ -2970,13 +2970,13 @@ export const ArcadeArena: React.FC<ArcadeArenaProps> = ({
                   </div>
 
                   {/* Full Target English Sentence */}
-                  <div className="text-xs sm:text-sm font-mono font-black tracking-wide text-slate-900 dark:text-white leading-snug">
+                  <div className="text-xs sm:text-sm font-mono font-black tracking-wide text-[#0B2249] dark:text-white leading-snug">
                     🇬🇧 &ldquo;{activeMonument.sentenceEn || activeMonument.name}&rdquo;
                   </div>
 
                   {/* Full Indonesian Meaning */}
                   {activeMonument.sentenceId && (
-                    <div className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 leading-snug">
+                    <div className="text-[11px] font-bold text-[#0D949E] dark:text-[#2DD4BF] leading-snug">
                       🇮🇩 Artinya: &ldquo;{activeMonument.sentenceId}&rdquo;
                     </div>
                   )}
@@ -3003,7 +3003,7 @@ export const ArcadeArena: React.FC<ArcadeArenaProps> = ({
                             className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold border transition-colors cursor-pointer flex items-center gap-1 ${
                               wordDone
                                 ? 'bg-emerald-500/20 border-emerald-500/60 text-emerald-700 dark:text-emerald-300'
-                                : 'bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300'
+                                : 'bg-[#F2F9FB] dark:bg-[#071731] border-[#C5E4EC] dark:border-[#1E447D] text-[#0B2249] dark:text-[#CBE7F0]'
                             }`}
                             title={`Tap to hear "${w.en}" (${w.id})`}
                           >
@@ -3044,10 +3044,10 @@ export const ArcadeArena: React.FC<ArcadeArenaProps> = ({
                       onClick={() => handleTrayBlockClick(idx)}
                       className={`min-h-[78px] rounded-lg border-2 flex flex-col items-center justify-between p-1.5 transition-all cursor-pointer ${
                         !shape
-                          ? 'bg-slate-100/50 dark:bg-slate-950/30 border-slate-200 dark:border-slate-800/40 opacity-35 cursor-default'
+                          ? 'bg-[#E8F5F8]/50 dark:bg-[#071731]/30 border-[#C5E4EC] dark:border-[#1E447D]/40 opacity-35 cursor-default'
                           : isSelected
-                          ? 'bg-sky-50/70 dark:bg-slate-950 border-sky-500 dark:border-sky-400'
-                          : 'bg-slate-50 dark:bg-slate-950/80 border-slate-200 dark:border-slate-800 hover:border-slate-400'
+                          ? 'bg-[#CCF5F8]/60 dark:bg-[#12336B] border-[#14B8C4]'
+                          : 'bg-[#F2F9FB] dark:bg-[#071731]/80 border-[#C5E4EC] dark:border-[#1E447D] hover:border-[#14B8C4]'
                       }`}
                     >
                       {shape ? (
@@ -3075,7 +3075,7 @@ export const ArcadeArena: React.FC<ArcadeArenaProps> = ({
                                       } rounded-[2px] flex items-center justify-center`}
                                     >
                                       {val === 1 && cellChar ? (
-                                        <span className="text-[9px] font-mono font-black text-slate-950 leading-none">
+                                        <span className="text-[9px] font-mono font-black text-white leading-none">
                                           {cellChar}
                                         </span>
                                       ) : null}
@@ -3085,7 +3085,7 @@ export const ArcadeArena: React.FC<ArcadeArenaProps> = ({
                               )}
                             </div>
                           </div>
-                          <div className="text-[10px] font-bold text-slate-700 dark:text-slate-300 truncate w-full text-center leading-tight">
+                          <div className="text-[10px] font-bold text-[#0B2249] dark:text-[#CBE7F0] truncate w-full text-center leading-tight">
                             {isSelected
                               ? language === 'id'
                                 ? 'Ketuk Pasang'
@@ -3095,7 +3095,7 @@ export const ArcadeArena: React.FC<ArcadeArenaProps> = ({
                         </>
                       ) : (
                         <div className="flex-1 flex items-center justify-center">
-                          <span className="text-[10px] text-slate-400 dark:text-slate-600 font-mono">
+                          <span className="text-[10px] text-[#557293] dark:text-[#5C7FA8] font-mono">
                             {language === 'id' ? 'Selesai' : 'Done'}
                           </span>
                         </div>
@@ -3115,7 +3115,7 @@ export const ArcadeArena: React.FC<ArcadeArenaProps> = ({
                     ? handleReshuffleLetterBoard()
                     : startNewGame(mode)
                 }
-                className="py-2 px-2 bg-emerald-500 hover:bg-emerald-400 text-[11px] font-extrabold text-slate-950 rounded-lg transition-colors flex items-center justify-center gap-1 whitespace-nowrap cursor-pointer"
+                className="py-2 px-2 bg-[#14B8C4] hover:bg-[#0EA5B7] text-[11px] font-extrabold text-[#062134] rounded-lg transition-colors flex items-center justify-center gap-1 whitespace-nowrap cursor-pointer"
                 title={
                   isLetterScrambleGame
                     ? 'Shuffle Letter Squares on the Board'
@@ -3150,7 +3150,7 @@ export const ArcadeArena: React.FC<ArcadeArenaProps> = ({
                   }
                 }}
                 disabled={!isLetterScrambleGame && !bestMove}
-                className="py-2 px-2 bg-sky-500 hover:bg-sky-400 disabled:opacity-40 text-[11px] font-extrabold text-slate-950 rounded-lg transition-colors flex items-center justify-center gap-1 whitespace-nowrap cursor-pointer"
+                className="py-2 px-2 bg-[#0B2249] dark:bg-[#2DD4BF] hover:bg-[#12336B] dark:hover:bg-[#5EEAD4] disabled:opacity-40 text-[11px] font-extrabold text-white dark:text-[#062134] rounded-lg transition-colors flex items-center justify-center gap-1 whitespace-nowrap cursor-pointer"
                 title={
                   isLetterScrambleGame
                     ? 'Auto-Swap 1 Misplaced Letter Square Into Correct Position'
@@ -3182,7 +3182,7 @@ export const ArcadeArena: React.FC<ArcadeArenaProps> = ({
                   !isLetterScrambleGame &&
                   (selectedTrayIdx === null || !tray[selectedTrayIdx])
                 }
-                className="py-2 px-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-40 text-[11px] font-bold text-slate-800 dark:text-sky-400 rounded-lg transition-colors flex items-center justify-center gap-1 whitespace-nowrap cursor-pointer"
+                className="py-2 px-2 bg-[#E8F5F8] dark:bg-[#122E5E] hover:bg-[#D5EEF4] dark:hover:bg-[#1B4284] border border-[#C5E4EC] dark:border-[#1E447D] disabled:opacity-40 text-[11px] font-bold text-[#0B2249] dark:text-[#2DD4BF] rounded-lg transition-colors flex items-center justify-center gap-1 whitespace-nowrap cursor-pointer"
                 title={
                   isLetterScrambleGame
                     ? 'Go to Next Sentence / Kalimat Berikutnya'

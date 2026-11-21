@@ -135,11 +135,11 @@ export const VisualExampleCard: React.FC<VisualExampleCardProps> = ({
   );
 
   return (
-    <div className="max-w-4xl mx-auto bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-6 space-y-5 shadow-sm">
+    <div className="max-w-4xl mx-auto bg-white dark:bg-[#0D244B] border border-[#C5E4EC] dark:border-[#1E447D] rounded-2xl p-4 sm:p-6 space-y-5 shadow-sm">
       {/* Top Header + Language Switcher + Back to Game */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 dark:border-slate-800 pb-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#C5E4EC] dark:border-[#1E447D] pb-4">
         <div>
-          <div className="text-xs text-emerald-600 dark:text-emerald-400 font-mono font-bold flex items-center gap-1.5">
+          <div className="text-xs text-[#0D949E] dark:text-[#2DD4BF] font-mono font-bold flex items-center gap-1.5">
             <Brain className="w-4 h-4" />
             <span>
               {language === 'id'
@@ -149,7 +149,7 @@ export const VisualExampleCard: React.FC<VisualExampleCardProps> = ({
                 : `BRAIN WORKOUT PORTAL · PORTAL LATIHAN OTAK ANAK (${MONUMENT_PUZZLES.length} GAMES)`}
             </span>
           </div>
-          <h2 className="text-lg sm:text-xl font-extrabold font-display text-slate-900 dark:text-white mt-0.5">
+          <h2 className="text-lg sm:text-xl font-extrabold font-display text-[#0B2249] dark:text-white mt-0.5">
             {language === 'id'
               ? 'Cara Bermain & Manfaat Latihan Otak Setiap Permainan'
               : language === 'en'
@@ -160,15 +160,15 @@ export const VisualExampleCard: React.FC<VisualExampleCardProps> = ({
 
         <div className="flex flex-wrap items-center gap-2">
           {/* Language Switcher Pills */}
-          <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-950 p-1 rounded-xl border border-slate-200 dark:border-slate-800">
-            <Languages className="w-3.5 h-3.5 text-sky-500 ml-1" />
+          <div className="flex items-center gap-1 bg-[#E8F5F8] dark:bg-[#071731] p-1 rounded-xl border border-[#C5E4EC] dark:border-[#1E447D]">
+            <Languages className="w-3.5 h-3.5 text-[#14B8C4] ml-1" />
             <button
               type="button"
               onClick={() => onLanguageChange('bilingual')}
               className={`px-2 py-1 rounded-lg text-[11px] font-bold cursor-pointer transition-colors ${
                 language === 'bilingual'
-                  ? 'bg-sky-500 text-slate-950'
-                  : 'text-slate-600 dark:text-slate-400'
+                  ? 'bg-[#14B8C4] text-[#062134]'
+                  : 'text-[#355275] dark:text-[#A9C8E8]'
               }`}
             >
               🇮🇩+🇬🇧 Bilingual
@@ -178,8 +178,8 @@ export const VisualExampleCard: React.FC<VisualExampleCardProps> = ({
               onClick={() => onLanguageChange('id')}
               className={`px-2 py-1 rounded-lg text-[11px] font-bold cursor-pointer transition-colors ${
                 language === 'id'
-                  ? 'bg-emerald-500 text-slate-950'
-                  : 'text-slate-600 dark:text-slate-400'
+                  ? 'bg-[#0B2249] dark:bg-[#2DD4BF] text-white dark:text-[#062134]'
+                  : 'text-[#355275] dark:text-[#A9C8E8]'
               }`}
             >
               🇮🇩 Bahasa
@@ -189,8 +189,8 @@ export const VisualExampleCard: React.FC<VisualExampleCardProps> = ({
               onClick={() => onLanguageChange('en')}
               className={`px-2 py-1 rounded-lg text-[11px] font-bold cursor-pointer transition-colors ${
                 language === 'en'
-                  ? 'bg-violet-500 text-slate-950'
-                  : 'text-slate-600 dark:text-slate-400'
+                  ? 'bg-[#0B2249] dark:bg-[#2DD4BF] text-white dark:text-[#062134]'
+                  : 'text-[#355275] dark:text-[#A9C8E8]'
               }`}
             >
               🇬🇧 English
@@ -201,7 +201,7 @@ export const VisualExampleCard: React.FC<VisualExampleCardProps> = ({
             <button
               type="button"
               onClick={onReturnToArena}
-              className="py-2 px-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+              className="py-2 px-3 bg-[#0B2249] dark:bg-[#14B8C4] hover:bg-[#12336B] dark:hover:bg-[#2DD4BF] text-white dark:text-[#062134] font-extrabold text-xs rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
             >
               <Gamepad2 className="w-4 h-4" />
               <span>
@@ -217,7 +217,7 @@ export const VisualExampleCard: React.FC<VisualExampleCardProps> = ({
       </div>
 
       {/* Animated 3-Step Visual Tutorial */}
-      <div className="bg-slate-50 dark:bg-slate-950/90 border border-slate-200 dark:border-slate-800/80 rounded-xl p-4 space-y-3">
+      <div className="bg-[#F2F9FB] dark:bg-[#071731] border border-[#C5E4EC] dark:border-[#1E447D] rounded-xl p-4 space-y-3">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-1.5">
             {DEMO_STEPS.map((s, idx) => (
@@ -423,8 +423,8 @@ export const VisualExampleCard: React.FC<VisualExampleCardProps> = ({
                 key={game.id}
                 className={`rounded-xl border p-3.5 space-y-2.5 transition-all flex flex-col justify-between ${
                   isCurrent
-                    ? 'bg-violet-500/10 border-violet-500/50'
-                    : 'bg-slate-50 dark:bg-slate-950/70 border-slate-200 dark:border-slate-800'
+                    ? 'bg-[#CCF5F8]/50 dark:bg-[#12336B] border-[#14B8C4]'
+                    : 'bg-[#F2F9FB] dark:bg-[#071731] border-[#C5E4EC] dark:border-[#1E447D]'
                 }`}
               >
                 <div className="space-y-2">
@@ -432,7 +432,7 @@ export const VisualExampleCard: React.FC<VisualExampleCardProps> = ({
                   <div className="flex items-start justify-between gap-2.5">
                     <div className="flex items-center gap-2.5">
                       {/* Mini 8x8 Blueprint / Letter Square Preview */}
-                      <div className="grid grid-cols-8 gap-[1px] p-1 bg-white dark:bg-slate-900 rounded-lg border border-slate-300 dark:border-slate-800 shrink-0">
+                      <div className="grid grid-cols-8 gap-[1px] p-1 bg-white dark:bg-[#0D244B] rounded-lg border border-[#C5E4EC] dark:border-[#1E447D] shrink-0">
                         {game.blueprint.map((row, rIdx) =>
                           row.map((val, cIdx) => {
                             const letterCh =
@@ -444,7 +444,7 @@ export const VisualExampleCard: React.FC<VisualExampleCardProps> = ({
                                   backgroundColor:
                                     val > 0
                                       ? game.colors[(val - 1) % 4]
-                                      : '#1e293b25',
+                                      : '#0B224922',
                                 }}
                                 className="w-2.5 h-2.5 flex items-center justify-center text-[6px] font-black text-slate-950 leading-none rounded-[1px]"
                               >
@@ -456,10 +456,10 @@ export const VisualExampleCard: React.FC<VisualExampleCardProps> = ({
                       </div>
 
                       <div>
-                        <div className="text-[10px] font-mono font-bold text-violet-600 dark:text-violet-400 uppercase">
+                        <div className="text-[10px] font-mono font-bold text-[#0D949E] dark:text-[#2DD4BF] uppercase">
                           #{index + 1} · {game.category} / {game.categoryId}
                         </div>
-                        <h4 className="text-sm font-extrabold text-slate-900 dark:text-white leading-snug">
+                        <h4 className="text-sm font-extrabold text-[#0B2249] dark:text-white leading-snug">
                           {game.emoji}{' '}
                           {language === 'id'
                             ? game.nameId
@@ -473,7 +473,7 @@ export const VisualExampleCard: React.FC<VisualExampleCardProps> = ({
                     <button
                       type="button"
                       onClick={() => onSelectAndPlayMonument(index)}
-                      className="px-2.5 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-[11px] rounded-lg flex items-center gap-1 shrink-0 cursor-pointer"
+                      className="px-2.5 py-1.5 bg-[#14B8C4] hover:bg-[#0EA5B7] text-[#062134] font-extrabold text-[11px] rounded-lg flex items-center gap-1 shrink-0 cursor-pointer"
                     >
                       <Play className="w-3 h-3 fill-current" />
                       <span>
@@ -488,12 +488,12 @@ export const VisualExampleCard: React.FC<VisualExampleCardProps> = ({
 
                   {/* Full English Sentence + Indonesian Translation Box for Scramble Words/Sentences */}
                   {game.sentenceEn && (
-                    <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg px-2.5 py-1.5 space-y-0.5">
-                      <div className="text-xs font-extrabold font-mono text-amber-700 dark:text-amber-300">
+                    <div className="bg-[#E8F5F8] dark:bg-[#0D244B] border border-[#14B8C4]/40 rounded-lg px-2.5 py-1.5 space-y-0.5">
+                      <div className="text-xs font-extrabold font-mono text-[#0B2249] dark:text-[#2DD4BF]">
                         🔤 &ldquo;{game.sentenceEn}&rdquo;
                       </div>
                       {game.sentenceId && (
-                        <div className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">
+                        <div className="text-[11px] font-semibold text-[#0D949E] dark:text-[#CCF5F8]">
                           🇮🇩 Arti: &ldquo;{game.sentenceId}&rdquo;
                         </div>
                       )}
