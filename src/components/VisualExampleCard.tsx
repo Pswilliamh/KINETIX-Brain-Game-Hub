@@ -91,6 +91,9 @@ interface VisualExampleCardProps {
   onSelectAndPlayMonument: (index: number) => void;
   onStartGuidedDrill?: () => void;
   onStartPuzzleMode?: () => void;
+  onStartCandyGame?: () => void;
+  onStartCheckersGame?: () => void;
+  onStartMazeGame?: () => void;
   onReturnToArena?: () => void;
   isPracticeMode: boolean;
   isPuzzleMode?: boolean;
@@ -111,6 +114,9 @@ export const VisualExampleCard: React.FC<VisualExampleCardProps> = ({
   activeMonumentIndex,
   onSelectAndPlayMonument,
   onStartGuidedDrill,
+  onStartCandyGame,
+  onStartCheckersGame,
+  onStartMazeGame,
   onReturnToArena,
 }) => {
   const [activeStepIdx, setActiveStepIdx] = useState<number>(0);
@@ -215,6 +221,95 @@ export const VisualExampleCard: React.FC<VisualExampleCardProps> = ({
           )}
         </div>
       </div>
+
+      {/* Featured Classic & Educational Arcade Games: Brain Maze, Candy Match-3 & Checkers */}
+      {(onStartMazeGame || onStartCandyGame || onStartCheckersGame) && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {onStartMazeGame && (
+            <div className="bg-[#F2F9FB] dark:bg-[#071731] border border-[#14B8C4]/50 rounded-xl p-3.5 flex flex-col justify-between gap-2.5">
+              <div className="space-y-1">
+                <div className="text-sm font-extrabold text-[#0B2249] dark:text-white flex items-center gap-1.5">
+                  <span>🌽</span>
+                  <span>
+                    {language === 'id'
+                      ? 'Labirin Edukasi (3 Tema)'
+                      : 'Brain Maze (3 Themes)'}
+                  </span>
+                </div>
+                <p className="text-[11px] text-[#355275] dark:text-[#CBE7F0] leading-snug">
+                  {language === 'id'
+                    ? 'Labirin Jagung (Kosakata Inggris), Balap Mobil (Hitung Cepat), & Kura-Kura vs Kelinci!'
+                    : 'Corn Maze (English Vocab), Race Car (Turbo Math), & Tortoise vs. Hare live fable race!'}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={onStartMazeGame}
+                className="w-full py-2 px-3 bg-[#14B8C4] hover:bg-[#0EA5B7] text-[#062134] font-extrabold text-xs rounded-lg whitespace-nowrap cursor-pointer flex items-center justify-center gap-1"
+              >
+                <Play className="w-3.5 h-3.5 fill-current" />
+                <span>{language === 'id' ? 'Main Labirin' : 'Play Maze'}</span>
+              </button>
+            </div>
+          )}
+
+          {onStartCandyGame && (
+            <div className="bg-[#F2F9FB] dark:bg-[#071731] border border-[#14B8C4]/50 rounded-xl p-3.5 flex flex-col justify-between gap-2.5">
+              <div className="space-y-1">
+                <div className="text-sm font-extrabold text-[#0B2249] dark:text-white flex items-center gap-1.5">
+                  <span>🍬</span>
+                  <span>
+                    {language === 'id'
+                      ? 'Permen Match-3'
+                      : 'Candy Match-3'}
+                  </span>
+                </div>
+                <p className="text-[11px] text-[#355275] dark:text-[#CBE7F0] leading-snug">
+                  {language === 'id'
+                    ? 'Tukar & cocokkan 3+ permen! Buat Permen Garis (4) & Bom Pelangi (5) dengan konfeti.'
+                    : 'Swap & match 3+ candies! Create Striped Line Blasters (4) & Rainbow Bombs (5) with combos.'}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={onStartCandyGame}
+                className="w-full py-2 px-3 bg-[#14B8C4] hover:bg-[#0EA5B7] text-[#062134] font-extrabold text-xs rounded-lg whitespace-nowrap cursor-pointer flex items-center justify-center gap-1"
+              >
+                <Play className="w-3.5 h-3.5 fill-current" />
+                <span>{language === 'id' ? 'Main Permen' : 'Play Candy'}</span>
+              </button>
+            </div>
+          )}
+
+          {onStartCheckersGame && (
+            <div className="bg-[#F2F9FB] dark:bg-[#071731] border border-[#14B8C4]/50 rounded-xl p-3.5 flex flex-col justify-between gap-2.5">
+              <div className="space-y-1">
+                <div className="text-sm font-extrabold text-[#0B2249] dark:text-white flex items-center gap-1.5">
+                  <span>🔴</span>
+                  <span>
+                    {language === 'id'
+                      ? 'Catur Dam (Checkers)'
+                      : 'Checkers / Dam'}
+                  </span>
+                </div>
+                <p className="text-[11px] text-[#355275] dark:text-[#CBE7F0] leading-snug">
+                  {language === 'id'
+                    ? 'Lompati bidak lawan, lompat ganda & jadi Raja! Lawan Bot atau 2 Pemain.'
+                    : 'Jump pieces, chain double-jumps & crown Kings! Play vs AI Bot or 2 Players.'}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={onStartCheckersGame}
+                className="w-full py-2 px-3 bg-[#0B2249] dark:bg-[#2DD4BF] hover:bg-[#12336B] dark:hover:bg-[#5EEAD4] text-white dark:text-[#062134] font-extrabold text-xs rounded-lg whitespace-nowrap cursor-pointer flex items-center justify-center gap-1"
+              >
+                <Play className="w-3.5 h-3.5 fill-current" />
+                <span>{language === 'id' ? 'Main Dam' : 'Play Checkers'}</span>
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Animated 3-Step Visual Tutorial */}
       <div className="bg-[#F2F9FB] dark:bg-[#071731] border border-[#C5E4EC] dark:border-[#1E447D] rounded-xl p-4 space-y-3">

@@ -1,4 +1,11 @@
-export type GameMode = 'arcade' | 'daily' | 'practice' | 'puzzle';
+export type GameMode =
+  | 'arcade'
+  | 'daily'
+  | 'practice'
+  | 'puzzle'
+  | 'candy'
+  | 'checkers'
+  | 'maze';
 
 export type AppLanguage = 'bilingual' | 'id' | 'en';
 

@@ -57,6 +57,9 @@ import {
 
 type ActiveSection = 'arena' | 'leaderboard' | 'vault' | 'giveaway' | 'learnlink';
 
+// Temporarily hide the $50/month giveaway across the portal (set to true to re-enable later)
+const SHOW_MONTHLY_GIVEAWAY = false;
+
 const LOCAL_STORAGE_KEY = 'kinetix_arcade_player_v1';
 const THEME_STORAGE_KEY = 'learnlink_theme_choice_v2';
 const LANGUAGE_STORAGE_KEY = 'kinetix_language_choice_v1';
@@ -523,7 +526,11 @@ export default function App() {
     }) => {
       setProfile((prev) => {
         const nextHigh =
-          params.mode === 'arcade' || params.mode === 'puzzle'
+          params.mode === 'arcade' ||
+          params.mode === 'puzzle' ||
+          params.mode === 'candy' ||
+          params.mode === 'checkers' ||
+          params.mode === 'maze'
             ? Math.max(prev.highScore, params.score)
             : prev.highScore;
         const nextDailyHigh =
@@ -576,13 +583,17 @@ export default function App() {
         if (user) {
           syncProfileToCloud(user, updated, false);
           if (
-            ((params.mode === 'arcade' || params.mode === 'puzzle') &&
+            ((params.mode === 'arcade' ||
+              params.mode === 'puzzle' ||
+              params.mode === 'candy' ||
+              params.mode === 'checkers' ||
+              params.mode === 'maze') &&
               params.score >= prev.highScore) ||
             (params.mode === 'daily' && params.score >= prev.dailyHighScore)
           ) {
             syncLeaderboardEntryToCloud(
               user,
-              params.mode === 'puzzle' ? 'arcade' : params.mode,
+              params.mode === 'daily' ? 'daily' : 'arcade',
               params.score,
               params.level,
               nextPatterns,
@@ -616,7 +627,9 @@ export default function App() {
       syncMonthlyDrawToCloud(user, updated.drawTickets, updated.highScore);
     }
     showTemporaryNotice(
-      'Daily Reward Claimed: +15,000 Credits & +1 Monthly $50 Giveaway Ticket!'
+      SHOW_MONTHLY_GIVEAWAY
+        ? 'Daily Reward Claimed: +15,000 Credits & +1 Monthly $50 Giveaway Ticket!'
+        : 'Daily Reward Claimed: +15,000 Free Credits Added!'
     );
   };
 
@@ -778,7 +791,9 @@ export default function App() {
       syncMonthlyDrawToCloud(user, updated.drawTickets, updated.highScore);
     }
     showTemporaryNotice(
-      `PayPal Top-Up Complete: +${addedCredits.toLocaleString()} Credits & +${bonusTickets} Monthly $50 Draw Tickets!`
+      SHOW_MONTHLY_GIVEAWAY
+        ? `PayPal Top-Up Complete: +${addedCredits.toLocaleString()} Credits & +${bonusTickets} Monthly $50 Draw Tickets!`
+        : `PayPal Top-Up Complete: +${addedCredits.toLocaleString()} Credits Added!`
     );
   };
 
@@ -838,18 +853,20 @@ export default function App() {
               <Download className="w-3.5 h-3.5" />
               <span>Vault</span>
             </button>
-            <button
-              type="button"
-              onClick={() => setActiveSection('giveaway')}
-              className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 whitespace-nowrap shrink-0 cursor-pointer transition-colors ${
-                activeSection === 'giveaway'
-                  ? 'bg-[#14B8C4] text-[#062134] font-bold'
-                  : 'text-[#CBE7F0] hover:text-white hover:bg-white/10'
-              }`}
-            >
-              <Ticket className="w-3.5 h-3.5" />
-              <span>$50 Draw</span>
-            </button>
+            {SHOW_MONTHLY_GIVEAWAY && (
+              <button
+                type="button"
+                onClick={() => setActiveSection('giveaway')}
+                className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 whitespace-nowrap shrink-0 cursor-pointer transition-colors ${
+                  activeSection === 'giveaway'
+                    ? 'bg-[#14B8C4] text-[#062134] font-bold'
+                    : 'text-[#CBE7F0] hover:text-white hover:bg-white/10'
+                }`}
+              >
+                <Ticket className="w-3.5 h-3.5" />
+                <span>$50 Draw</span>
+              </button>
+            )}
             <button
               type="button"
               onClick={() => setActiveSection('learnlink')}
@@ -932,8 +949,12 @@ export default function App() {
                 <span className="text-emerald-600 dark:text-emerald-400">
                   {profile.patternsCompleted} Patterns
                 </span>
-                <span aria-hidden="true">·</span>
-                <span>{profile.drawTickets} Ticket(s)</span>
+                {SHOW_MONTHLY_GIVEAWAY && (
+                  <>
+                    <span aria-hidden="true">·</span>
+                    <span>{profile.drawTickets} Ticket(s)</span>
+                  </>
+                )}
               </div>
 
               <div className="flex flex-wrap items-center gap-1.5">
@@ -1035,7 +1056,7 @@ export default function App() {
             />
           )}
 
-          {activeSection === 'giveaway' && (
+          {SHOW_MONTHLY_GIVEAWAY && activeSection === 'giveaway' && (
             <MonthlyDrawSection
               credits={profile.credits}
               drawTickets={profile.drawTickets}

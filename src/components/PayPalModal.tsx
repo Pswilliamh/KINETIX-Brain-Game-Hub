@@ -66,7 +66,7 @@ export const PayPalModal: React.FC<PayPalModalProps> = ({
                   Instant PayPal Credit Boost
                 </h3>
                 <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-                  Top up credits behind the Win Wall to immediately unlock all minimalist skins, downloadable strategy eBooks, and bonus tickets for the monthly $50 drawing.
+                  Top up credits behind the Win Wall to immediately unlock all minimalist skins and downloadable strategy eBooks.
                 </p>
               </div>
 
@@ -82,7 +82,7 @@ export const PayPalModal: React.FC<PayPalModalProps> = ({
                 >
                   <div>
                     <div className="text-sm font-bold text-slate-900 dark:text-white">
-                      +250,000 Credits + 2 Draw Tickets
+                      +250,000 Credits
                     </div>
                     <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                       Featured Win-Wall Micro-Pack
@@ -103,7 +103,7 @@ export const PayPalModal: React.FC<PayPalModalProps> = ({
                 >
                   <div>
                     <div className="text-sm font-bold text-slate-900 dark:text-white">
-                      +750,000 Credits + 5 Draw Tickets
+                      +750,000 Credits
                     </div>
                     <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                       Complete Vault & All Skins Unlocker
@@ -157,7 +157,7 @@ export const PayPalModal: React.FC<PayPalModalProps> = ({
                   +{creditAmount.toLocaleString()} Credits Added!
                 </h3>
                 <p className="text-xs text-slate-600 dark:text-slate-400">
-                  Plus +{ticketBonus} bonus tickets registered for the monthly $50 giveaway drawing.
+                  Your credits are synced and ready to unlock skins and vault items.
                 </p>
               </div>
               <button

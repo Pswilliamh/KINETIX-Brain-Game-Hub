@@ -28,6 +28,9 @@ import {
 import { soundEngine } from '../utils/soundAndHaptics';
 import { VisualExampleCard } from './VisualExampleCard';
 import { AIHelperPanel, ComputedBestMove } from './AIHelperPanel';
+import { CandyCrushGame } from './CandyCrushGame';
+import { CheckersGame } from './CheckersGame';
+import { MazeAdventureGame } from './MazeAdventureGame';
 import {
   RotateCw,
   Pause,
@@ -741,7 +744,9 @@ export const ArcadeArena: React.FC<ArcadeArenaProps> = ({
   }, []);
 
   useEffect(() => {
-    if (gameState === 'PLAYING' && subScreen === 'play') {
+    const isStandaloneBoardMode =
+      mode === 'candy' || mode === 'checkers' || mode === 'maze';
+    if (gameState === 'PLAYING' && subScreen === 'play' && !isStandaloneBoardMode) {
       soundEngine.startRhythmLoop(palette.bpm, level, (beat) => {
         setBeatStep(beat);
       });
@@ -751,7 +756,7 @@ export const ArcadeArena: React.FC<ArcadeArenaProps> = ({
     return () => {
       soundEngine.stopRhythmLoop();
     };
-  }, [gameState, level, palette.bpm, subScreen]);
+  }, [gameState, level, mode, palette.bpm, subScreen]);
 
   const loadMonumentPuzzle = useCallback(
     (targetIndex: number, clearPatternFromScratch: boolean = true) => {
@@ -1877,7 +1882,15 @@ export const ArcadeArena: React.FC<ArcadeArenaProps> = ({
       ) {
         return;
       }
-      if (gameState !== 'PLAYING' || subScreen !== 'play') return;
+      if (
+        gameState !== 'PLAYING' ||
+        subScreen !== 'play' ||
+        mode === 'candy' ||
+        mode === 'checkers' ||
+        mode === 'maze'
+      ) {
+        return;
+      }
       if (e.key === 'r' || e.key === 'R') {
         e.preventDefault();
         handleRotateSelected();
@@ -2024,6 +2037,18 @@ export const ArcadeArena: React.FC<ArcadeArenaProps> = ({
             onModeChange('practice');
             loadPracticeDrill(0);
           }}
+          onStartCandyGame={() => {
+            onModeChange('candy');
+            setSubScreen('play');
+          }}
+          onStartCheckersGame={() => {
+            onModeChange('checkers');
+            setSubScreen('play');
+          }}
+          onStartMazeGame={() => {
+            onModeChange('maze');
+            setSubScreen('play');
+          }}
           onReturnToArena={() => setSubScreen('play')}
         />
       )}
@@ -2061,16 +2086,45 @@ export const ArcadeArena: React.FC<ArcadeArenaProps> = ({
             }}
             className="border rounded-xl px-2.5 py-2 space-y-1.5 shadow-xs"
           >
-            {/* Row 1: Mode Pills + Score & Credits */}
-            <div className="flex items-center justify-between gap-1.5">
-              <div className="flex items-center gap-1 bg-[#E8F5F8] dark:bg-[#071731] p-0.5 rounded-lg border border-[#C5E4EC] dark:border-[#1E447D]">
+            {/* Row 1: Spacious 2-Row 7-Game Mode Switcher (all games immediately visible & tappable) */}
+            <div className="space-y-1">
+              <div className="grid grid-cols-4 gap-1 bg-[#E8F5F8] dark:bg-[#071731] p-0.5 rounded-lg border border-[#C5E4EC] dark:border-[#1E447D]">
                 <button
                   type="button"
                   onClick={() => {
                     onModeChange('puzzle');
-                    loadMonumentPuzzle(monumentIdx, true);
+                    const firstSentenceIdx = MONUMENT_PUZZLES.findIndex(
+                      (m) => m.category === 'Scramble Words'
+                    );
+                    loadMonumentPuzzle(
+                      firstSentenceIdx !== -1 ? firstSentenceIdx : 0,
+                      true
+                    );
                   }}
-                  className={`px-2 py-1 text-[11px] font-bold rounded-md transition-colors cursor-pointer ${
+                  className={`px-1.5 py-1 text-[11px] font-bold rounded-md whitespace-nowrap text-center transition-colors cursor-pointer ${
+                    isLetterScrambleGame
+                      ? 'bg-[#14B8C4] text-[#062134]'
+                      : 'text-[#0D949E] dark:text-[#2DD4BF] hover:bg-[#14B8C4]/15'
+                  }`}
+                  title="English Sentence & Word Scramble Games"
+                >
+                  🔤 {language === 'id' ? 'Kata' : 'Words'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onModeChange('puzzle');
+                    const firstNonWordIdx = MONUMENT_PUZZLES.findIndex(
+                      (m) => m.category !== 'Scramble Words'
+                    );
+                    loadMonumentPuzzle(
+                      isLetterScrambleGame && firstNonWordIdx !== -1
+                        ? firstNonWordIdx
+                        : monumentIdx,
+                      true
+                    );
+                  }}
+                  className={`px-1.5 py-1 text-[11px] font-bold rounded-md whitespace-nowrap text-center transition-colors cursor-pointer ${
                     mode === 'puzzle' && !isLetterScrambleGame
                       ? 'bg-[#0B2249] dark:bg-[#14B8C4] text-white dark:text-[#062134]'
                       : 'text-[#355275] dark:text-[#A9C8E8]'
@@ -2081,76 +2135,106 @@ export const ArcadeArena: React.FC<ArcadeArenaProps> = ({
                 <button
                   type="button"
                   onClick={() => {
-                    // Quick jump directly to the first Sentence Scramble game ("CAN YOU HELP ME FIND THE AIRPORT")
-                    onModeChange('puzzle');
-                    const firstSentenceIdx = MONUMENT_PUZZLES.findIndex(
-                      (m) => m.category === 'Scramble Words'
-                    );
-                    loadMonumentPuzzle(
-                      firstSentenceIdx !== -1 ? firstSentenceIdx : 0,
-                      true
-                    );
+                    onModeChange('maze');
+                    soundEngine.playBlockSelect();
                   }}
-                  className={`px-2 py-1 text-[11px] font-bold rounded-md transition-colors cursor-pointer ${
-                    isLetterScrambleGame
+                  className={`px-1.5 py-1 text-[11px] font-bold rounded-md whitespace-nowrap text-center transition-colors cursor-pointer ${
+                    mode === 'maze'
                       ? 'bg-[#14B8C4] text-[#062134]'
                       : 'text-[#0D949E] dark:text-[#2DD4BF] hover:bg-[#14B8C4]/15'
                   }`}
-                  title="Jump directly to English Sentence & Word Scramble Games"
+                  title="Play Corn Maze, Race Car & Tortoise and Hare Mazes"
                 >
-                  🔤 {language === 'id' ? 'Kalimat' : 'Words'}
+                  🌽 {language === 'id' ? 'Labirin' : 'Maze'}
                 </button>
                 <button
                   type="button"
                   onClick={() => {
-                    onModeChange('arcade');
-                    startNewGame('arcade');
+                    onModeChange('candy');
+                    soundEngine.playBlockSelect();
                   }}
-                  className={`px-2 py-1 text-[11px] font-bold rounded-md transition-colors cursor-pointer ${
-                    mode === 'arcade'
-                      ? 'bg-[#0B2249] dark:bg-[#14B8C4] text-white dark:text-[#062134]'
-                      : 'text-[#355275] dark:text-[#A9C8E8]'
+                  className={`px-1.5 py-1 text-[11px] font-bold rounded-md whitespace-nowrap text-center transition-colors cursor-pointer ${
+                    mode === 'candy'
+                      ? 'bg-[#14B8C4] text-[#062134]'
+                      : 'text-[#0D949E] dark:text-[#2DD4BF] hover:bg-[#14B8C4]/15'
                   }`}
+                  title="Play Candy Match-3 Game"
                 >
-                  Arcade
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    onModeChange('practice');
-                    loadPracticeDrill(0);
-                  }}
-                  className={`px-2 py-1 text-[11px] font-bold rounded-md transition-colors cursor-pointer ${
-                    mode === 'practice'
-                      ? 'bg-[#0B2249] dark:bg-[#14B8C4] text-white dark:text-[#062134]'
-                      : 'text-[#355275] dark:text-[#A9C8E8]'
-                  }`}
-                >
-                  {language === 'id' ? 'Latihan' : 'Practice'}
+                  🍬 {language === 'id' ? 'Permen' : 'Candy'}
                 </button>
               </div>
 
-              {/* Compact Score & Credits Readout */}
-              <div className="flex items-center gap-2 font-mono text-right">
-                <div>
-                  <span className="text-[10px] text-[#557293] dark:text-[#9FC0E2] block leading-none">
-                    {language === 'id' ? 'SKOR' : 'SCORE'}
-                  </span>
-                  <span className="text-sm font-extrabold text-[#0B2249] dark:text-white tabular-nums">
-                    {score.toLocaleString()}
-                  </span>
+              <div className="flex items-center justify-between gap-1.5">
+                <div className="grid grid-cols-3 gap-1 flex-1 bg-[#E8F5F8] dark:bg-[#071731] p-0.5 rounded-lg border border-[#C5E4EC] dark:border-[#1E447D]">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onModeChange('checkers');
+                      soundEngine.playBlockSelect();
+                    }}
+                    className={`px-1.5 py-1 text-[11px] font-bold rounded-md whitespace-nowrap text-center transition-colors cursor-pointer ${
+                      mode === 'checkers'
+                        ? 'bg-[#14B8C4] text-[#062134]'
+                        : 'text-[#0D949E] dark:text-[#2DD4BF] hover:bg-[#14B8C4]/15'
+                    }`}
+                    title="Play Checkers / Catur Dam"
+                  >
+                    🔴 {language === 'id' ? 'Dam' : 'Checkers'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onModeChange('arcade');
+                      startNewGame('arcade');
+                    }}
+                    className={`px-1.5 py-1 text-[11px] font-bold rounded-md whitespace-nowrap text-center transition-colors cursor-pointer ${
+                      mode === 'arcade'
+                        ? 'bg-[#0B2249] dark:bg-[#14B8C4] text-white dark:text-[#062134]'
+                        : 'text-[#355275] dark:text-[#A9C8E8]'
+                    }`}
+                  >
+                    Arcade
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onModeChange('practice');
+                      loadPracticeDrill(0);
+                    }}
+                    className={`px-1.5 py-1 text-[11px] font-bold rounded-md whitespace-nowrap text-center transition-colors cursor-pointer ${
+                      mode === 'practice'
+                        ? 'bg-[#0B2249] dark:bg-[#14B8C4] text-white dark:text-[#062134]'
+                        : 'text-[#355275] dark:text-[#A9C8E8]'
+                    }`}
+                  >
+                    {language === 'id' ? 'Latihan' : 'Practice'}
+                  </button>
                 </div>
-                <div className="pl-2 border-l border-[#C5E4EC] dark:border-[#1E447D]">
-                  <span className="text-[10px] text-[#0D949E] dark:text-[#2DD4BF] block leading-none">
-                    {language === 'id' ? 'KOIN' : 'CREDITS'}
-                  </span>
-                  <span className="text-xs font-bold text-[#0D949E] dark:text-[#2DD4BF] tabular-nums">
-                    {credits.toLocaleString()}
-                  </span>
+
+                {/* Compact Score & Credits Readout */}
+                <div className="flex items-center gap-1.5 font-mono text-right shrink-0">
+                  <div>
+                    <span className="text-[9px] text-[#557293] dark:text-[#9FC0E2] block leading-none">
+                      {language === 'id' ? 'SKOR' : 'SCORE'}
+                    </span>
+                    <span className="text-xs font-extrabold text-[#0B2249] dark:text-white tabular-nums">
+                      {score.toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="pl-1.5 border-l border-[#C5E4EC] dark:border-[#1E447D]">
+                    <span className="text-[9px] text-[#0D949E] dark:text-[#2DD4BF] block leading-none">
+                      {language === 'id' ? 'KOIN' : 'CREDITS'}
+                    </span>
+                    <span className="text-[11px] font-bold text-[#0D949E] dark:text-[#2DD4BF] tabular-nums">
+                      {credits.toLocaleString()}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
 
+            {mode !== 'candy' && mode !== 'checkers' && mode !== 'maze' && (
+            <>
             {/* Row 2: Compact 37-Game Selector / Pattern Bar + Guide & Audio Toggles */}
             <div className="flex items-center justify-between gap-1.5 pt-1 border-t border-slate-200/70 dark:border-slate-800/80">
               {mode === 'puzzle' ? (
@@ -2382,8 +2466,84 @@ export const ArcadeArena: React.FC<ArcadeArenaProps> = ({
                 </button>
               </div>
             </div>
+            </>
+            )}
           </div>
 
+          {/* ================================================================= */}
+          {/* DEDICATED CANDY MATCH-3 GAME MODE                                 */}
+          {/* ================================================================= */}
+          {mode === 'candy' && (
+            <CandyCrushGame
+              language={language}
+              onLanguageChange={onLanguageChange}
+              isLightMode={isLightMode}
+              soundOn={soundOn}
+              onToggleSound={toggleSound}
+              clearSignal={clearSignal}
+              onScoreUpdate={({ score: nextScore, level: nextLevel, earnedCredits, completedLevel }) => {
+                setScore(nextScore);
+                onRecordRunUpdate({
+                  score: nextScore,
+                  level: nextLevel,
+                  patternsInRun: completedLevel ? patternsInRun + 1 : patternsInRun,
+                  earnedCredits,
+                  mode: 'candy',
+                });
+              }}
+            />
+          )}
+
+          {/* ================================================================= */}
+          {/* DEDICATED CHECKERS / CATUR DAM GAME MODE                          */}
+          {/* ================================================================= */}
+          {mode === 'checkers' && (
+            <CheckersGame
+              language={language}
+              onLanguageChange={onLanguageChange}
+              isLightMode={isLightMode}
+              soundOn={soundOn}
+              onToggleSound={toggleSound}
+              clearSignal={clearSignal}
+              onScoreUpdate={({ score: nextScore, level: nextLevel, earnedCredits, wonMatch }) => {
+                setScore(nextScore);
+                onRecordRunUpdate({
+                  score: nextScore,
+                  level: nextLevel,
+                  patternsInRun: wonMatch ? patternsInRun + 1 : patternsInRun,
+                  earnedCredits,
+                  mode: 'checkers',
+                });
+              }}
+            />
+          )}
+
+          {/* ================================================================= */}
+          {/* DEDICATED EDUCATIONAL BRAIN MAZE (CORN, RACE CAR, TORTOISE & HARE) */}
+          {/* ================================================================= */}
+          {mode === 'maze' && (
+            <MazeAdventureGame
+              language={language}
+              onLanguageChange={onLanguageChange}
+              isLightMode={isLightMode}
+              soundOn={soundOn}
+              onToggleSound={toggleSound}
+              clearSignal={clearSignal}
+              onScoreUpdate={({ score: nextScore, level: nextLevel, earnedCredits, completedLevel }) => {
+                setScore(nextScore);
+                onRecordRunUpdate({
+                  score: nextScore,
+                  level: nextLevel,
+                  patternsInRun: completedLevel ? patternsInRun + 1 : patternsInRun,
+                  earnedCredits,
+                  mode: 'maze',
+                });
+              }}
+            />
+          )}
+
+          {mode !== 'candy' && mode !== 'checkers' && mode !== 'maze' && (
+          <>
           {/* Transient Chime Alert (Only appears for 2s when a chime rings) */}
           {chimeAlert && (
             <div className="bg-amber-500/20 border border-amber-500/50 text-amber-800 dark:text-amber-300 px-3 py-1 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1.5">
@@ -3254,6 +3414,8 @@ export const ArcadeArena: React.FC<ArcadeArenaProps> = ({
               </button>
             </div>
           </div>
+          </>
+          )}
         </div>
       )}
     </div>
